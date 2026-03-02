@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v3.1</title>
+    <title>Event Task Merger v3.2</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
         .container { max-width: 480px; margin: auto; }
@@ -14,22 +14,21 @@
         label { font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 8px; }
         select { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; font-size: 0.95rem; }
         
-        /* 操作性重視のステッパー */
-        .stepper-container { display: flex; gap: 10px; flex-wrap: wrap; }
-        .stepper-item { flex: 1; min-width: 140px; }
+        .stepper-container { display: flex; gap: 10px; }
+        .stepper-item { flex: 1; }
         .stepper { display: flex; align-items: center; background: #2d2d2d; border-radius: 8px; border: 1px solid #444; overflow: hidden; }
-        .stepper button { flex: 1; height: 45px; background: #3d3d3d; color: #fff; border: none; font-size: 1.4rem; cursor: pointer; }
+        .stepper button { flex: 1; height: 48px; background: #3d3d3d; color: #fff; border: none; font-size: 1.4rem; cursor: pointer; }
         .stepper button:active { background: #555; }
-        .stepper input { width: 50px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.1rem; font-weight: bold; pointer-events: none; }
+        .stepper input { width: 60px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.2rem; font-weight: bold; pointer-events: none; }
 
-        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.4; font-family: monospace; letter-spacing: 0; }
+        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.4; font-family: monospace; }
         .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 タスク統合 v3.1</h1></header>
+    <header><h1>📋 タスク統合 v3.2</h1></header>
     
     <div class="card">
         <div class="control-row"><label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select></div>
@@ -41,12 +40,8 @@
                 <div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div>
             </div>
             <div class="stepper-item">
-                <label>開始日</label>
+                <label>表示開始日</label>
                 <div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div>
-            </div>
-            <div class="stepper-item">
-                <label>表示日数</label>
-                <div class="stepper"><button onclick="step('displayDays', -1)">－</button><input type="number" id="displayDays" value="3" readonly><button onclick="step('displayDays', 1)">＋</button></div>
             </div>
         </div>
     </div>
@@ -67,18 +62,18 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
+const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const bSel = document.getElementById('baseEvent');
 const oSel = document.getElementById('overlayEvent');
-const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 rawData.forEach(e => { bSel.add(new Option(e.name, e.id)); oSel.add(new Option(e.name, e.id)); });
 
 function getWidth(str) {
-    let width = 0;
+    let w = 0;
     for(let i=0; i<str.length; i++) {
         let c = str.charCodeAt(i);
-        width += (c < 256 || (c >= 0xff61 && c <= 0xff9f)) ? 0.5 : 1;
+        w += (c < 256 || (c >= 0xff61 && c <= 0xff9f)) ? 0.5 : 1;
     }
-    return width;
+    return w;
 }
 
 function padName(name) {
@@ -91,7 +86,8 @@ function padName(name) {
 function step(id, val) {
     const el = document.getElementById(id);
     let newVal = parseInt(el.value) + val;
-    if (id === 'rangeStart' || id === 'displayDays') newVal = Math.max(1, newVal);
+    if (id === 'rangeStart') newVal = Math.max(1, 8, newVal); // 1〜8日
+    if (id === 'rangeStart') newVal = Math.min(8, Math.max(1, newVal));
     if (id === 'overlayShift') newVal = Math.max(0, newVal);
     el.value = newVal;
     updateOutput();
@@ -102,8 +98,6 @@ function updateOutput() {
     const oId = oSel.value;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
-    const dCount = parseInt(document.getElementById('displayDays').value) || 3;
-    const rEnd = rStart + dCount - 1;
     
     let combined = {};
     let totalMax = b.days;
@@ -122,17 +116,16 @@ function updateOutput() {
             }
             combined[k] = row;
         });
-    } else { combined = b.data; }
+    } else { combined = b.data; totalMax = b.days; }
 
+    // 開始日からデータの最後まで
     let header = "日目|";
-    for (let i = rStart; i <= rEnd; i++) {
-        header += i.toString().split('').map(d => fullDigits[d] || d).join('') + (i === rEnd ? "" : " ");
+    for (let i = rStart; i <= totalMax; i++) {
+        header += i.toString().split('').map(d => fullDigits[d] || d).join('') + (i === totalMax ? "" : " ");
     }
     
     let rows = Object.keys(combined).map(k => {
-        let vals = combined[k].substring(rStart - 1, rEnd).split('').join(' ');
-        // 足りない分を「－」で埋める（表示日数分確保）
-        while(vals.split(' ').length < dCount) vals += " －";
+        let vals = combined[k].substring(rStart - 1, totalMax).split('').join(' ');
         return `${padName(k)}|${vals}`;
     });
 
