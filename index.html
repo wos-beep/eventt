@@ -3,57 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v2.51</title>
+    <title>Event Task Merger v2.7</title>
     <style>
-        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
-        .container { max-width: 600px; margin: auto; }
-        header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
-        h1 { font-size: 1.2rem; color: #bb86fc; margin: 0; }
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
+        .container { max-width: 500px; margin: auto; }
+        header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 15px; padding-bottom: 8px; }
+        h1 { font-size: 1.1rem; color: #bb86fc; margin: 0; }
         .version { font-size: 0.7rem; color: #888; }
-        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #333; }
-        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; font-size: 0.9rem; }
-        .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .control-group { flex: 1; min-width: 120px; }
-        label { font-size: 0.7rem; color: #888; display: block; margin-bottom: 4px; }
-        select, input { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 12px; display: block; font-size: 0.9rem; }
+        .control-row { margin-bottom: 15px; }
+        label { font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 6px; }
+        select { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 6px; font-size: 0.9rem; }
+        
+        /* ＋－ボタン付きの数値入力スタイル */
+        .stepper { display: flex; align-items: center; gap: 5px; background: #2d2d2d; border-radius: 6px; border: 1px solid #444; overflow: hidden; width: fit-content; }
+        .stepper button { width: 45px; height: 40px; background: #3d3d3d; color: #fff; border: none; font-size: 1.2rem; cursor: pointer; }
+        .stepper button:active { background: #555; }
+        .stepper input { width: 40px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1rem; -moz-appearance: textfield; pointer-events: none; }
+        .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .range-controls { display: flex; gap: 15px; flex-wrap: wrap; }
+        
         pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.4; font-family: monospace; }
-        button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 1rem; }
-        button:active { transform: scale(0.98); }
+        .copy-btn { width: 100%; padding: 16px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 1rem; }
+        .copy-btn:active { transform: scale(0.96); opacity: 0.8; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
 <div class="container">
     <header>
-        <h1>📋 イベント統合コピー</h1>
-        <div class="version">Version 2.51 (2026.03.03 安定版)</div>
+        <h1>📋 タスク統合・スマホ最適版</h1>
+        <div class="version">Version 2.7 (2026.03.03 ステッパー導入)</div>
     </header>
     
     <div class="card">
-        <span class="event-name">イベント選択・統合設定</span>
-        <div class="controls">
-            <div class="control-group">
-                <label>ベースイベント</label>
-                <select id="baseEvent"></select>
-            </div>
-            <div class="control-group">
-                <label>追加イベント（任意）</label>
-                <select id="overlayEvent">
-                    <option value="">なし（単体表示）</option>
-                </select>
-            </div>
-            <div class="control-group" style="flex: 0.3;">
-                <label>開始日ズレ</label>
-                <input type="number" id="offset" value="0" min="0">
+        <div class="control-row">
+            <label>ベースイベント</label>
+            <select id="baseEvent" onchange="updateOutput()"></select>
+        </div>
+        <div class="control-row">
+            <label>重ね合わせ（任意）</label>
+            <select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select>
+        </div>
+        <div class="control-row">
+            <label>重ねズレ（追加分を何日遅らせるか）</label>
+            <div class="stepper">
+                <button onclick="step('overlayShift', -1)">－</button>
+                <input type="number" id="overlayShift" value="0" readonly>
+                <button onclick="step('overlayShift', 1)">＋</button>
             </div>
         </div>
-        <button onclick="updateOutput()">プレビューを更新</button>
+        <div class="range-controls">
+            <div class="control-row">
+                <label>開始日</label>
+                <div class="stepper">
+                    <button onclick="step('rangeStart', -1)">－</button>
+                    <input type="number" id="rangeStart" value="1" readonly>
+                    <button onclick="step('rangeStart', 1)">＋</button>
+                </div>
+            </div>
+            <div class="control-row">
+                <label>終了日</label>
+                <div class="stepper">
+                    <button onclick="step('rangeEnd', -1)">－</button>
+                    <input type="number" id="rangeEnd" value="7" readonly>
+                    <button onclick="step('rangeEnd', 1)">＋</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="outputArea" class="card" style="display:none;">
         <span id="displayName" class="event-name"></span>
         <pre id="outputText"></pre>
-        <button onclick="copyToClipboard()" style="background:#03dac6;">この内容をコピー</button>
+        <button class="copy-btn" onclick="copyToClipboard()" id="mainCopyBtn">この内容をコピー</button>
     </div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
@@ -69,65 +94,62 @@ const rawData = [
 
 const bSel = document.getElementById('baseEvent');
 const oSel = document.getElementById('overlayEvent');
-const fullWidthDigits = ["０","１","２","３","４","５","６","７","８","９"];
+const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
-// 初期化
 rawData.forEach(e => {
     bSel.add(new Option(e.name, e.id));
     oSel.add(new Option(e.name, e.id));
 });
 
-function formatText(title, data, days, note="") {
-    // 日数を全角数字に変換して整列を維持
-    let header = "日数|" + Array.from({length: days}, (_, i) => {
-        let n = (i + 1).toString();
-        return n.split('').map(d => fullWidthDigits[parseInt(d)]).join('');
-    }).join(' ');
-    
-    let rows = Object.keys(data).map(k => {
-        let key = k.substring(0,2);
-        return `${key}|${data[k].split('').join(' ')}`;
-    });
-    return `${title}\n${header}\n${rows.join('\n')}${note ? '\n'+note : ''}`;
+function toFull(n) {
+    return n.toString().split('').map(d => fullDigits[parseInt(d)] || d).join('');
+}
+
+function step(id, val) {
+    const el = document.getElementById(id);
+    let newVal = parseInt(el.value) + val;
+    if (id === 'overlayShift') newVal = Math.max(0, newVal);
+    if (id === 'rangeStart') newVal = Math.max(1, newVal);
+    if (id === 'rangeEnd') newVal = Math.max(1, newVal);
+    el.value = newVal;
+    updateOutput();
 }
 
 function updateOutput() {
     const b = rawData.find(x => x.id === bSel.value);
     const oId = oSel.value;
-    const shift = parseInt(document.getElementById('offset').value) || 0;
+    const shift = parseInt(document.getElementById('overlayShift').value) || 0;
+    const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
+    const rEnd = parseInt(document.getElementById('rangeEnd').value) || 7;
     
-    let finalTitle, finalData, finalDays, finalNote;
+    let combined = {};
+    let totalDays = b.days;
+    let title = b.name;
 
-    if (!oId) {
-        // 単体表示
-        finalTitle = b.name;
-        finalData = b.data;
-        finalDays = b.days;
-        finalNote = b.note;
-    } else {
-        // 統合表示
+    if (oId) {
         const o = rawData.find(x => x.id === oId);
-        finalDays = Math.max(b.days, o.days + shift);
-        finalTitle = `統合:${b.name.substring(0,2)}+${o.name.substring(0,2)}`;
-        finalNote = b.note || "";
-        
-        let merged = {};
-        const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
-        allKeys.forEach(key => {
+        totalDays = Math.max(b.days, o.days + shift);
+        title = `統合:${b.name.substring(0,2)}+${o.name.substring(0,2)}`;
+        const keys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
+        keys.forEach(k => {
             let row = "";
-            for (let d = 0; d < finalDays; d++) {
-                const bV = (b.data[key] || "")[d] || "－";
-                const oV = (o.data[key] || "")[d - shift] || "－";
-                if (bV !== "－" && oV !== "－") row += "◎";
-                else row += (bV !== "－") ? bV : oV;
+            for (let d = 0; d < totalDays; d++) {
+                const bV = (b.data[k] || "")[d] || "－";
+                const oV = (o.data[k] || "")[d - shift] || "－";
+                row += (bV !== "－" && oV !== "－") ? "◎" : (bV !== "－" ? bV : oV);
             }
-            merged[key] = row;
+            combined[k] = row;
         });
-        finalData = merged;
+    } else {
+        combined = b.data;
     }
 
-    document.getElementById('displayName').innerText = finalTitle;
-    document.getElementById('outputText').innerText = formatText(finalTitle, finalData, finalDays, finalNote);
+    let header = "日|";
+    for (let i = rStart; i <= rEnd; i++) header += toFull(i) + (i === rEnd ? "" : " ");
+    let rows = Object.keys(combined).map(k => `${k.substring(0,2)}|${combined[k].substring(rStart - 1, rEnd).split('').join(' ')}`);
+
+    document.getElementById('displayName').innerText = title;
+    document.getElementById('outputText').innerText = `${title}\n${header}\n${rows.join('\n')}`;
     document.getElementById('outputArea').style.display = 'block';
 }
 
@@ -139,6 +161,7 @@ function copyToClipboard() {
         setTimeout(() => s.style.display = 'none', 2000);
     });
 }
+updateOutput();
 </script>
 </body>
 </html>
