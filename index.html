@@ -3,157 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v2.3</title>
+    <title>Event Task Merger v1.51</title>
     <style>
-        pre { 
-            font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
-            background: #2d2d2d; padding: 15px; border-radius: 8px; font-size: 0.85rem; 
-            overflow-x: auto; white-space: pre; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.8; 
-        }
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; }
         header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
-        h1 { font-size: 1.4rem; color: #bb86fc; margin: 0; }
-        .version { font-size: 0.8rem; color: #888; }
-        .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
-        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        .full-width { grid-column: span 2; }
-        label { font-size: 0.8rem; color: #bbb; display: block; margin-bottom: 4px; }
-        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1rem; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
-        .legend { font-size: 0.75rem; color: #888; text-align: center; margin-top: 10px; line-height: 1.4; }
+        h1 { font-size: 1.2rem; color: #bb86fc; margin: 0; }
+        .version { font-size: 0.7rem; color: #888; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #333; }
+        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; font-size: 0.9rem; }
+        .controls { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 6px; border-radius: 4px; font-size: 0.8rem; flex: 1; }
+        pre { background: #2d2d2d; padding: 10px; border-radius: 8px; font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
+        button { width: 100%; padding: 12px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 0.9rem; }
+        button:active { transform: scale(0.98); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 8px 20px; border-radius: 20px; display: none; font-weight: bold; z-index: 1000; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.3 (2026.03.03)</div></header>
+    <header><h1>📋 チャット用タスク統合</h1><div class="version">Version 1.51 (2026.03.03 更新)</div></header>
     
     <div class="card">
-        <div class="settings-grid">
-            <div class="full-width">
-                <label>ベースイベント</label>
-                <select id="baseEvent" onchange="mergeEvents()"></select>
-            </div>
-            <div>
-                <label>重ねるイベント</label>
-                <select id="overlayEvent" onchange="mergeEvents()"></select>
-            </div>
-            <div>
-                <label>ずらし (日)</label>
-                <input type="number" id="offset" value="0" min="0" onchange="mergeEvents()">
-            </div>
-            <div class="full-width">
-                <label>表示開始日 (◯日目以降を表示)</label>
-                <input type="number" id="startDay" value="1" min="1" max="8" onchange="mergeEvents()">
-            </div>
+        <span class="event-name">カスタム統合（イベントを重ねる）</span>
+        <div class="controls">
+            <select id="baseEvent"></select>
+            <select id="overlayEvent"></select>
+            <input type="number" id="offset" value="0" min="0" style="max-width:40px;" title="開始日オフセット">
         </div>
-        
-        <div id="previewArea">
+        <button onclick="mergeEvents()">統合プレビューを生成</button>
+        <div id="previewArea" style="margin-top:10px; display:none;">
             <pre id="mergedText"></pre>
-            <button onclick="copyToClipboard()">結果をコピー</button>
+            <button onclick="copyToClipboard('mergedText')" style="background:#03dac6;">統合結果をコピー</button>
         </div>
-        <div class="legend" id="legendText">◎:重複 / 大,季,準,氷,軍,士:単体</div>
     </div>
+    <div id="app"></div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
 
 <script>
 const rawData = [
-    { id: "a", name: "同盟大作戦with軍備･士官", short: "大", data: {"行商":"◎◎◎◎◎◎◎","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","専門":"◯◎－－－－－","訓練":"－－△◎－－－","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","宝石":"－－◯△－△△","ﾀﾞｲﾔ":"△◎△△◯△△"}, days: 7 },
-    { id: "s", name: "季節イベント", short: "季", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
-    { id: "k", name: "最強王国準備フェーズ", short: "準", data: {"宝石":"◯－◯◯－","火晶":"◯◯－－◯","加速":"◯◯－－◯","ﾙﾚｯﾄ":"－◯◯－－","欠片":"－◯◯－－","採集":"－◯－－－","専門":"－◯◯－－","ﾍﾟｯﾄ":"－－◯－◯","野獣":"－－◯－－","英装":"－－－－◯","訓練":"－－－◯－","領装":"－－－－◯"}, days: 5 },
-    { id: "i", name: "氷原支配者", short: "氷", data: {"火晶":"◯◯－－◯－◯","加速":"◯◯－－◯－◯","宝石":"◯－◯◯－－－","ﾙﾚｯﾄ":"－◯◯－－－－","欠片":"－◯◯－－－◯","英装":"－◯－◯◯－－","専門":"－◯◯－－－－","ﾍﾟｯﾄ":"－－◯－－－◯","訓練":"－－－◯－◯－","領装":"－－－－－◯◯","採集":"－－－－－－◯"}, days: 7 },
-    { id: "o", name: "軍備競技･士官計画", short: "軍", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
+    { id: "alliance", name: "同盟大作戦with軍備･士官", data: {"行商":"◎◎◎◎◎◎◎","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","専門":"◯◎－－－－－","訓練":"－－△◎－－－","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","宝石":"－－◯△－△△","ﾀﾞｲﾔ":"△◎△△◯△△"}, days: 7, note: "※7日は半日のみ" },
+    { id: "seasonal", name: "季節イベント", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
+    { id: "kingdom", name: "最強王国準備フェーズ", data: {"宝石":"◯－◯◯－","火晶":"◯◯－－◯","加速":"◯◯－－◯","ﾙﾚｯﾄ":"－◯◯－－","欠片":"－◯◯－－","採集":"－◯－－－","専門":"－◯◯－－","ﾍﾟｯﾄ":"－－◯－◯","野獣":"－－◯－－","英装":"－－－－◯","訓練":"－－－◯－","領装":"－－－－◯"}, days: 5 },
+    { id: "ice", name: "氷原支配者", data: {"火晶":"◯◯－－◯－◯","加速":"◯◯－－◯－◯","宝石":"◯－◯◯－－－","ﾙﾚｯﾄ":"－◯◯－－－－","欠片":"－◯◯－－－◯","英装":"－◯－◯◯－－","専門":"－◯◯－－－－","ﾍﾟｯﾄ":"－－◯－－－◯","訓練":"－－－◯－◯－","領装":"－－－－－◯◯","採集":"－－－－－－◯"}, days: 7 },
+    { id: "officer", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
-function getShortName(eventObj, dayIndex) {
-    if (eventObj.id === "o") {
-        // 2日ごとに軍・士を切り替え (0,1:軍 / 2,3:士 / 4,5:軍 / 6,7:士)
-        return (Math.floor(dayIndex / 2) % 2 === 0) ? "軍" : "士";
-    }
-    return eventObj.short;
-}
-
-const baseSel = document.getElementById('baseEvent');
-const overSel = document.getElementById('overlayEvent');
-
-function init() {
-    rawData.forEach(e => {
-        baseSel.add(new Option(e.name, e.id));
-        overSel.add(new Option(e.name, e.id));
+function formatText(title, data, days, note="") {
+    let header = "日|" + Array.from({length: days}, (_, i) => (i + 1).toString()).join(' ');
+    let rows = Object.keys(data).map(k => {
+        let key = k.substring(0,2);
+        return `${key}|${data[k].split('').join(' ')}`;
     });
-    overSel.add(new Option("－－（なし）－－", "none"), 0);
-    overSel.value = "none";
-    mergeEvents();
+    return `${title}\n${header}\n${rows.join('\n')}${note ? '\n'+note : ''}`;
 }
 
-function toFullWidth(n) { return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0); }
+const app = document.getElementById('app');
+const bSel = document.getElementById('baseEvent');
+const oSel = document.getElementById('overlayEvent');
+
+rawData.forEach(e => {
+    bSel.add(new Option(e.name, e.id));
+    oSel.add(new Option(e.name, e.id));
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${formatText(e.name, e.data, e.days, e.note)}</pre><button onclick="copyToClipboard('${e.id}')">コピー</button>`;
+    app.appendChild(d);
+});
 
 function mergeEvents() {
-    const b = rawData.find(x => x.id === baseSel.value);
-    const oId = overSel.value;
-    const o = oId !== "none" ? rawData.find(x => x.id === oId) : null;
+    const b = rawData.find(x => x.id === bSel.value);
+    const o = rawData.find(x => x.id === oSel.value);
     const shift = parseInt(document.getElementById('offset').value) || 0;
-    const start = parseInt(document.getElementById('startDay').value) || 1;
-    
-    const maxDays = o ? Math.max(b.days, o.days + shift) : b.days;
+    const maxDays = Math.max(b.days, o.days + shift);
     let merged = {};
-    const allKeys = new Set([...Object.keys(b.data), ...(o ? Object.keys(o.data) : [])]);
-
-    allKeys.forEach(key => {
+    new Set([...Object.keys(b.data), ...Object.keys(o.data)]).forEach(key => {
         let row = "";
         for (let d = 0; d < maxDays; d++) {
-            const bVal = b.data[key]?.[d] || "－";
-            const oVal = (o && o.data[key]) ? (o.data[key][d - shift] || "－") : "－";
-            
-            if (o === null) {
-                row += bVal;
-            } else {
-                if (bVal !== "－" && oVal !== "－") {
-                    row += "◎";
-                } else if (bVal !== "－") {
-                    row += getShortName(b, d);
-                } else if (oVal !== "－") {
-                    row += getShortName(o, d - shift);
-                } else {
-                    row += "－";
-                }
-            }
+            const bV = b.data[key]?.[d] || "－";
+            const oV = o.data[key]?.[d - shift] || "－";
+            if (bV !== "－" && oV !== "－") row += "◎";
+            else row += (bV !== "－") ? bV : oV;
         }
         merged[key] = row;
     });
-
-    document.getElementById('legendText').innerText = o ? `◎:重複 / 大,季,準,氷,軍,士:単体` : `◎:最優先 / ◯:通常 / △:低`;
-
-    let dayLabels = [];
-    for (let i = start; i <= maxDays; i++) dayLabels.push(toFullWidth(i));
-    
-    let rows = [];
-    Object.keys(merged).forEach(key => {
-        const slicedRow = merged[key].substring(start - 1, maxDays);
-        if (/[^－]/.test(slicedRow)) {
-            rows.push(key + "　" + slicedRow.split('').join('｜'));
-        }
-    });
-
-    const title = o ? `${getShortName(b, 0)}＋${getShortName(o, 0)}` : b.name;
-    const resultText = title + (start > 1 ? ` (${start}日目〜)` : "") + "\n" + 
-                       "日数　" + dayLabels.join('　') + "\n" + rows.join('\n');
-    
-    document.getElementById('mergedText').innerText = rows.length > 0 ? resultText : "表示できるタスクがありません";
+    document.getElementById('mergedText').innerText = formatText(`統合:${b.name.substring(0,2)}+${o.name.substring(0,2)}`, merged, maxDays);
+    document.getElementById('previewArea').style.display = 'block';
 }
 
-function copyToClipboard() {
-    const t = document.getElementById('mergedText').innerText;
+function copyToClipboard(id) {
+    const t = document.getElementById(id).innerText;
     navigator.clipboard.writeText(t).then(() => {
         const s = document.getElementById('toast');
         s.style.display = 'block';
         setTimeout(() => s.style.display = 'none', 2000);
     });
 }
-
-init();
 </script>
 </body>
 </html>
