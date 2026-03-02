@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v3.3</title>
+    <title>Event Task Merger v3.4</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
         .container { max-width: 480px; margin: auto; }
@@ -17,32 +17,44 @@
         .stepper-item { flex: 1; }
         .stepper { display: flex; align-items: center; background: #2d2d2d; border-radius: 8px; border: 1px solid #444; overflow: hidden; }
         .stepper button { flex: 1; height: 48px; background: #3d3d3d; color: #fff; border: none; font-size: 1.4rem; cursor: pointer; }
-        .stepper input { width: 60px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.2rem; font-weight: bold; pointer-events: none; }
+        .stepper input { width: 60px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.1rem; font-weight: bold; pointer-events: none; }
         
-        /* preタグをチャット画面の幅に似せて表示 */
-        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.2; font-family: monospace; }
+        /* チャット画面の幅をシミュレート */
+        pre { 
+            background: #2d2d2d; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-size: 0.9rem; 
+            color: #fff; 
+            border: 1px solid #444; 
+            margin: 0; 
+            line-height: 1.4; 
+            font-family: monospace;
+            /* ここで折り返し幅を強制し、プレビューをゲーム画面に近づける */
+            white-space: pre-wrap; 
+            word-break: break-all;
+            max-width: 240px; /* ゲームチャットの1行に近い幅に設定 */
+        }
         .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 タスク統合 v3.3</h1></header>
+    <header><h1>📋 タスク統合 v3.4</h1></header>
     <div class="card">
         <div class="control-row"><label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select></div>
         <div class="control-row"><label>重ね合わせ（任意）</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select></div>
         <div class="stepper-container">
-            <div class="stepper-item">
-                <label>重ねズレ</label>
-                <div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div>
-            </div>
-            <div class="stepper-item">
-                <label>表示開始日</label>
-                <div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div>
-            </div>
+            <div class="stepper-item"><label>重ねズレ</label><div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div></div>
+            <div class="stepper-item"><label>表示開始日</label><div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div></div>
         </div>
     </div>
-    <div id="outputArea" class="card" style="display:none;"><pre id="outputText"></pre><button class="copy-btn" onclick="copyToClipboard()">内容をコピー</button></div>
+    <div id="outputArea" class="card" style="display:none;">
+        <label>プレビュー（チャット再現）</label>
+        <pre id="outputText"></pre>
+        <button class="copy-btn" onclick="copyToClipboard()">内容をコピー</button>
+    </div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
 
@@ -101,28 +113,19 @@ function updateOutput() {
         });
     } else { combined = b.data; totalMax = b.days; }
 
-    const displayCount = totalMax - rStart + 1;
-    let header = "日目|";
-    for (let i = rStart; i <= totalMax; i++) {
-        header += i.toString().split('').map(d => fullDigits[d] || d).join('') + (i === totalMax ? "" : " ");
-    }
+    let header = "日目|" + Array.from({length: totalMax - rStart + 1}, (_, i) => i + rStart).map(n => fullDigits[n] || n).join(' ') + "\n";
+    let resultText = title + "\n" + header;
     
-    let resultText = title + "\n" + header + "\n";
     let keys = Object.keys(combined);
-    
-    if (displayCount >= 4) {
-        // 【詰め込みモード】改行を減らし、スペースで横に繋げる
-        keys.forEach((k, idx) => {
-            let line = `${padName(k)}|${combined[k].substring(rStart - 1, totalMax).split('').join(' ')}`;
-            // 2項目ごとに改行を入れるか、あるいは詰め込み
-            resultText += line + (idx % 2 === 1 ? "\n" : " ");
-        });
-    } else {
-        // 【リストモード】1項目ずつ改行
-        keys.forEach(k => {
-            resultText += `${padName(k)}|${combined[k].substring(rStart - 1, totalMax).split('').join(' ')}\n`;
-        });
-    }
+    keys.forEach((k, idx) => {
+        let line = `${padName(k)}|${combined[k].substring(rStart - 1, totalMax).split('').join(' ')}`;
+        // 前半6項目は改行、後半はベタ打ち
+        if (idx < 6) {
+            resultText += line + "\n";
+        } else {
+            resultText += line; 
+        }
+    });
 
     document.getElementById('outputText').innerText = resultText.trim();
     document.getElementById('outputArea').style.display = 'block';
