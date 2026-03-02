@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v2.1</title>
+    <title>Event Task Merger v2.2</title>
     <style>
         pre { 
             font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
@@ -18,18 +18,16 @@
         .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
         .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         .full-width { grid-column: span 2; }
-        .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         label { font-size: 0.8rem; color: #bbb; display: block; margin-bottom: 4px; }
         select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
         button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1rem; }
-        button:hover { opacity: 0.9; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
-        .legend { font-size: 0.75rem; color: #888; text-align: center; margin-top: 10px; }
+        .legend { font-size: 0.75rem; color: #888; text-align: center; margin-top: 10px; line-height: 1.4; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.1 (2026.03.03)</div></header>
+    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.2 (2026.03.03)</div></header>
     
     <div class="card">
         <div class="settings-grid">
@@ -55,7 +53,7 @@
             <pre id="mergedText"></pre>
             <button onclick="copyToClipboard()">結果をコピー</button>
         </div>
-        <div class="legend">◎:重複 / 大,季,準,氷,軍:単体タスク</div>
+        <div class="legend" id="legendText">◎:最優先 / ◯:通常 / △:低</div>
     </div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
@@ -86,7 +84,8 @@ function toFullWidth(n) { return String.fromCharCode(n.toString().charCodeAt(0) 
 
 function mergeEvents() {
     const b = rawData.find(x => x.id === baseSel.value);
-    const o = rawData.find(x => x.id === overSel.value) || null;
+    const oId = overSel.value;
+    const o = oId !== "none" ? rawData.find(x => x.id === oId) : null;
     const shift = parseInt(document.getElementById('offset').value) || 0;
     const start = parseInt(document.getElementById('startDay').value) || 1;
     
@@ -100,13 +99,22 @@ function mergeEvents() {
             const bVal = b.data[key]?.[d] || "－";
             const oVal = (o && o.data[key]) ? (o.data[key][d - shift] || "－") : "－";
             
-            if (bVal !== "－" && oVal !== "－") row += "◎";
-            else if (bVal !== "－") row += b.short;
-            else if (oVal !== "－") row += o.short;
-            else row += "－";
+            if (o === null) {
+                // 単体表示：元の記号をそのまま使う
+                row += bVal;
+            } else {
+                // 統合表示：重複は◎、片方は略称
+                if (bVal !== "－" && oVal !== "－") row += "◎";
+                else if (bVal !== "－") row += b.short;
+                else if (oVal !== "－") row += o.short;
+                else row += "－";
+            }
         }
         merged[key] = row;
     });
+
+    // 凡例の更新
+    document.getElementById('legendText').innerText = o ? `◎:重複 / 大,季,準,氷,軍:単体` : `◎:最優先 / ◯:通常 / △:低`;
 
     // テキスト生成
     let dayLabels = [];
