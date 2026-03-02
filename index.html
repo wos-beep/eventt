@@ -3,44 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v3.0</title>
+    <title>Event Task Merger v3.1</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
-        .container { max-width: 500px; margin: auto; }
+        .container { max-width: 480px; margin: auto; }
         header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 15px; padding-bottom: 8px; }
         h1 { font-size: 1.1rem; color: #bb86fc; margin: 0; }
         .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
-        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 12px; display: block; font-size: 0.9rem; }
         .control-row { margin-bottom: 15px; }
-        label { font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 6px; }
-        select { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 6px; font-size: 0.9rem; }
-        .stepper { display: flex; align-items: center; gap: 5px; background: #2d2d2d; border-radius: 6px; border: 1px solid #444; width: fit-content; }
-        .stepper button { width: 45px; height: 40px; background: #3d3d3d; color: #fff; border: none; font-size: 1.2rem; cursor: pointer; }
-        .stepper input { width: 40px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1rem; pointer-events: none; }
-        .range-controls { display: flex; gap: 15px; flex-wrap: wrap; }
-        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.4; font-family: monospace; }
-        .copy-btn { width: 100%; padding: 16px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 1rem; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
+        label { font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 8px; }
+        select { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; font-size: 0.95rem; }
+        
+        /* 操作性重視のステッパー */
+        .stepper-container { display: flex; gap: 10px; flex-wrap: wrap; }
+        .stepper-item { flex: 1; min-width: 140px; }
+        .stepper { display: flex; align-items: center; background: #2d2d2d; border-radius: 8px; border: 1px solid #444; overflow: hidden; }
+        .stepper button { flex: 1; height: 45px; background: #3d3d3d; color: #fff; border: none; font-size: 1.4rem; cursor: pointer; }
+        .stepper button:active { background: #555; }
+        .stepper input { width: 50px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.1rem; font-weight: bold; pointer-events: none; }
+
+        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.4; font-family: monospace; letter-spacing: 0; }
+        .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 タスク統合 v3.0</h1><div style="font-size:0.7rem; color:#888;">半角/全角幅補正・スマホ完結版</div></header>
+    <header><h1>📋 タスク統合 v3.1</h1></header>
+    
     <div class="card">
-        <div class="control-row"><label>ベース</label><select id="baseEvent" onchange="updateOutput()"></select></div>
-        <div class="control-row"><label>追加</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select></div>
-        <div class="control-row"><label>重ねズレ</label><div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div></div>
-        <div class="range-controls">
-            <div class="control-row"><label>開始日</label><div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div></div>
-            <div class="control-row"><label>終了日</label><div class="stepper"><button onclick="step('rangeEnd', -1)">－</button><input type="number" id="rangeEnd" value="7" readonly><button onclick="step('rangeEnd', 1)">＋</button></div></div>
+        <div class="control-row"><label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select></div>
+        <div class="control-row"><label>重ね合わせ（任意）</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select></div>
+        
+        <div class="stepper-container">
+            <div class="stepper-item">
+                <label>重ねズレ</label>
+                <div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div>
+            </div>
+            <div class="stepper-item">
+                <label>開始日</label>
+                <div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div>
+            </div>
+            <div class="stepper-item">
+                <label>表示日数</label>
+                <div class="stepper"><button onclick="step('displayDays', -1)">－</button><input type="number" id="displayDays" value="3" readonly><button onclick="step('displayDays', 1)">＋</button></div>
+            </div>
         </div>
     </div>
-    <div id="outputArea" class="card" style="display:none;"><span id="displayName" class="event-name"></span><pre id="outputText"></pre><button class="copy-btn" onclick="copyToClipboard()">コピー</button></div>
+
+    <div id="outputArea" class="card" style="display:none;">
+        <pre id="outputText"></pre>
+        <button class="copy-btn" onclick="copyToClipboard()">コピーする</button>
+    </div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
 
 <script>
-// 半角カナ混じりの項目。後続の処理で幅を全角2文字に揃えます。
 const rawData = [
     { id: "a", name: "同盟大作戦with軍備･士官", data: {"行商":"◎◎◎◎◎◎◎","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","専門":"◯◎－－－－－","訓練":"－－△◎－－－","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","宝石":"－－◯△－△△","ﾀﾞｲﾔ":"△◎△△◯△△"}, days: 7 },
     { id: "s", name: "季節イベント", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
@@ -49,22 +67,34 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
-const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const bSel = document.getElementById('baseEvent');
 const oSel = document.getElementById('overlayEvent');
+const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 rawData.forEach(e => { bSel.add(new Option(e.name, e.id)); oSel.add(new Option(e.name, e.id)); });
 
 function getWidth(str) {
     let width = 0;
-    for(let i=0; i<str.length; i++) width += (str.charCodeAt(i) < 256 || (str.charCodeAt(i) >= 0xff61 && str.charCodeAt(i) <= 0xff9f)) ? 0.5 : 1;
+    for(let i=0; i<str.length; i++) {
+        let c = str.charCodeAt(i);
+        width += (c < 256 || (c >= 0xff61 && c <= 0xff9f)) ? 0.5 : 1;
+    }
     return width;
 }
 
 function padName(name) {
     let w = getWidth(name);
-    if (w === 1) return name + "　"; // 全角1なら全角1足す
-    if (w === 1.5) return name + " "; // ﾍﾟｯﾄ等なら半角1足す
+    if (w === 1) return name + "　";
+    if (w === 1.5) return name + " ";
     return name;
+}
+
+function step(id, val) {
+    const el = document.getElementById(id);
+    let newVal = parseInt(el.value) + val;
+    if (id === 'rangeStart' || id === 'displayDays') newVal = Math.max(1, newVal);
+    if (id === 'overlayShift') newVal = Math.max(0, newVal);
+    el.value = newVal;
+    updateOutput();
 }
 
 function updateOutput() {
@@ -72,19 +102,20 @@ function updateOutput() {
     const oId = oSel.value;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
-    const rEnd = parseInt(document.getElementById('rangeEnd').value) || 8;
+    const dCount = parseInt(document.getElementById('displayDays').value) || 3;
+    const rEnd = rStart + dCount - 1;
     
     let combined = {};
-    let totalDays = b.days;
+    let totalMax = b.days;
     let title = b.name;
 
     if (oId) {
         const o = rawData.find(x => x.id === oId);
-        totalDays = Math.max(b.days, o.days + shift);
+        totalMax = Math.max(b.days, o.days + shift);
         title = `統合:${b.name.substring(0,2)}+${o.name.substring(0,2)}`;
         new Set([...Object.keys(b.data), ...Object.keys(o.data)]).forEach(k => {
             let row = "";
-            for (let d = 0; d < totalDays; d++) {
+            for (let d = 0; d < totalMax; d++) {
                 const bV = (b.data[k] || "")[d] || "－";
                 const oV = (o.data[k] || "")[d - shift] || "－";
                 row += (bV !== "－" && oV !== "－") ? "◎" : (bV !== "－" ? bV : oV);
@@ -94,24 +125,19 @@ function updateOutput() {
     } else { combined = b.data; }
 
     let header = "日目|";
-    for (let i = rStart; i <= rEnd; i++) header += i.toString().split('').map(d => fullDigits[d]).join('') + (i === rEnd ? "" : " ");
+    for (let i = rStart; i <= rEnd; i++) {
+        header += i.toString().split('').map(d => fullDigits[d] || d).join('') + (i === rEnd ? "" : " ");
+    }
     
     let rows = Object.keys(combined).map(k => {
-        return `${padName(k)}|${combined[k].substring(rStart - 1, rEnd).split('').join(' ')}`;
+        let vals = combined[k].substring(rStart - 1, rEnd).split('').join(' ');
+        // 足りない分を「－」で埋める（表示日数分確保）
+        while(vals.split(' ').length < dCount) vals += " －";
+        return `${padName(k)}|${vals}`;
     });
 
-    document.getElementById('displayName').innerText = title;
     document.getElementById('outputText').innerText = `${title}\n${header}\n${rows.join('\n')}`;
     document.getElementById('outputArea').style.display = 'block';
-}
-
-function step(id, val) {
-    const el = document.getElementById(id);
-    let newVal = parseInt(el.value) + val;
-    if (id.startsWith('range')) newVal = Math.max(1, newVal);
-    if (id === 'overlayShift') newVal = Math.max(0, newVal);
-    el.value = newVal;
-    updateOutput();
 }
 
 function copyToClipboard() {
