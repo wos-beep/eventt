@@ -3,21 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v1.9</title>
+    <title>Event Task Merger v2.0</title>
     <style>
-        /* 等幅フォントを指定してズレを防止 */
         pre { 
             font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
-            background: #2d2d2d; 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 0.85rem; 
-            overflow-x: auto; 
-            white-space: pre; /* 折り返しを無効にして列を維持 */
-            color: #fff; 
-            border: 1px solid #444; 
-            margin: 0; 
-            line-height: 1.8; 
+            background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; 
+            overflow-x: auto; white-space: pre; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.8; 
         }
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; }
@@ -36,7 +27,7 @@
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 1.9 (2026.03.03 更新)</div></header>
+    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.0 (2026.03.03 更新)</div></header>
     
     <div class="view-settings">
         <label>表示・コピーする開始日:</label>
@@ -71,29 +62,25 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", short: "軍", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
-// 半角数字を全角数字に変換する関数
-function toFullWidth(n) {
-    return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0);
-}
+function toFullWidth(n) { return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0); }
 
 function formatText(title, data, totalDays) {
     const start = parseInt(document.getElementById('startDay').value) || 1;
-    
-    // 日数ヘッダーを全角数字で作成
     let dayLabels = [];
-    for (let i = start; i <= totalDays; i++) {
-        dayLabels.push(toFullWidth(i));
-    }
-    let header = "日数　" + dayLabels.join('　');
-
-    // 各行を作成
-    let rows = Object.keys(data).map(key => {
+    for (let i = start; i <= totalDays; i++) dayLabels.push(toFullWidth(i));
+    
+    let rows = [];
+    Object.keys(data).forEach(key => {
         const slicedRow = data[key].substring(start - 1, totalDays);
-        // 記号の間も「全角の｜」や「全角スペース」で繋ぐ
-        return key + "　" + slicedRow.split('').join('｜');
+        // 重要：この期間に予定があるかチェック
+        const hasTask = /[^－]/.test(slicedRow); 
+        if (hasTask) {
+            rows.push(key + "　" + slicedRow.split('').join('｜'));
+        }
     });
 
-    return title + (start > 1 ? ` (${start}日目以降)` : "") + "\n" + header + "\n" + rows.join('\n');
+    if (rows.length === 0) return title + "\n(予定なし)";
+    return title + (start > 1 ? ` (${start}日目以降)` : "") + "\n" + "日数　" + dayLabels.join('　') + "\n" + rows.join('\n');
 }
 
 const app = document.getElementById('app');
@@ -128,11 +115,11 @@ function mergeEvents() {
     allKeys.forEach(key => {
         let row = "";
         for (let d = 0; d < maxDays; d++) {
-            const bVal = (b.data[key] && b.data[key][d]) ? b.data[key][d] : "－";
-            const oVal = (o.data[key] && o.data[key][d - shift]) ? o.data[key][d - shift] : "－";
-            if (bVal !== "－" && oVal !== "－") row += "◎";
-            else if (bVal !== "－") row += b.short;
-            else if (oVal !== "－") row += o.short;
+            const bV = (b.data[key] && b.data[key][d]) ? b.data[key][d] : "－";
+            const oV = (o.data[key] && o.data[key][d - shift]) ? o.data[key][d - shift] : "－";
+            if (bV !== "－" && oV !== "－") row += "◎";
+            else if (bV !== "－") row += b.short;
+            else if (oV !== "－") row += o.short;
             else row += "－";
         }
         merged[key] = row;
