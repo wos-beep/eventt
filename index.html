@@ -115,16 +115,4 @@ function copyToClipboard(id) {
 }
 </script>
 </body>
-</html>    d.className = 'card';
-    d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${e.text}</pre><button onclick="copyTo('${e.id}')">コピー</button>`;
-    app.appendChild(d);
-});
-function copyTo(id) {
-    const t = document.getElementById(id).innerText;
-    navigator.clipboard.writeText(t).then(() => {
-        const s = document.getElementById('toast');
-        s.style.display = 'block';
-        setTimeout(() => s.style.display = 'none', 2000);
-    });
-}
-</script></body></html>
+</html>
