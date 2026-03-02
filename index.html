@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v2.2</title>
+    <title>Event Task Merger v2.3</title>
     <style>
         pre { 
             font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
@@ -27,7 +27,7 @@
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.2 (2026.03.03)</div></header>
+    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.3 (2026.03.03)</div></header>
     
     <div class="card">
         <div class="settings-grid">
@@ -53,7 +53,7 @@
             <pre id="mergedText"></pre>
             <button onclick="copyToClipboard()">結果をコピー</button>
         </div>
-        <div class="legend" id="legendText">◎:最優先 / ◯:通常 / △:低</div>
+        <div class="legend" id="legendText">◎:重複 / 大,季,準,氷,軍,士:単体</div>
     </div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
@@ -66,6 +66,14 @@ const rawData = [
     { id: "i", name: "氷原支配者", short: "氷", data: {"火晶":"◯◯－－◯－◯","加速":"◯◯－－◯－◯","宝石":"◯－◯◯－－－","ﾙﾚｯﾄ":"－◯◯－－－－","欠片":"－◯◯－－－◯","英装":"－◯－◯◯－－","専門":"－◯◯－－－－","ﾍﾟｯﾄ":"－－◯－－－◯","訓練":"－－－◯－◯－","領装":"－－－－－◯◯","採集":"－－－－－－◯"}, days: 7 },
     { id: "o", name: "軍備競技･士官計画", short: "軍", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
+
+function getShortName(eventObj, dayIndex) {
+    if (eventObj.id === "o") {
+        // 2日ごとに軍・士を切り替え (0,1:軍 / 2,3:士 / 4,5:軍 / 6,7:士)
+        return (Math.floor(dayIndex / 2) % 2 === 0) ? "軍" : "士";
+    }
+    return eventObj.short;
+}
 
 const baseSel = document.getElementById('baseEvent');
 const overSel = document.getElementById('overlayEvent');
@@ -100,23 +108,24 @@ function mergeEvents() {
             const oVal = (o && o.data[key]) ? (o.data[key][d - shift] || "－") : "－";
             
             if (o === null) {
-                // 単体表示：元の記号をそのまま使う
                 row += bVal;
             } else {
-                // 統合表示：重複は◎、片方は略称
-                if (bVal !== "－" && oVal !== "－") row += "◎";
-                else if (bVal !== "－") row += b.short;
-                else if (oVal !== "－") row += o.short;
-                else row += "－";
+                if (bVal !== "－" && oVal !== "－") {
+                    row += "◎";
+                } else if (bVal !== "－") {
+                    row += getShortName(b, d);
+                } else if (oVal !== "－") {
+                    row += getShortName(o, d - shift);
+                } else {
+                    row += "－";
+                }
             }
         }
         merged[key] = row;
     });
 
-    // 凡例の更新
-    document.getElementById('legendText').innerText = o ? `◎:重複 / 大,季,準,氷,軍:単体` : `◎:最優先 / ◯:通常 / △:低`;
+    document.getElementById('legendText').innerText = o ? `◎:重複 / 大,季,準,氷,軍,士:単体` : `◎:最優先 / ◯:通常 / △:低`;
 
-    // テキスト生成
     let dayLabels = [];
     for (let i = start; i <= maxDays; i++) dayLabels.push(toFullWidth(i));
     
@@ -128,7 +137,7 @@ function mergeEvents() {
         }
     });
 
-    const title = o ? `${b.short}＋${o.short}` : b.name;
+    const title = o ? `${getShortName(b, 0)}＋${getShortName(o, 0)}` : b.name;
     const resultText = title + (start > 1 ? ` (${start}日目〜)` : "") + "\n" + 
                        "日数　" + dayLabels.join('　') + "\n" + rows.join('\n');
     
