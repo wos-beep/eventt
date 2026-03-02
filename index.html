@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v1.4</title>
+    <title>Event Task Merger v1.5</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; }
@@ -12,29 +12,29 @@
         .version { font-size: 0.8rem; color: #888; }
         .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
         .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-bottom: 15px; }
-        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; }
-        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr 60px; gap: 10px; margin-bottom: 15px; }
+        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.9rem; }
+        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.5; }
         button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:active { transform: scale(0.98); }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
+        button:active { transform: scale(0.98); opacity: 0.8; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベントタスク統合ツール</h1><div class="version">Version 1.4 (2026.03.03 更新)</div></header>
+    <header><h1>📋 イベントタスク統合ツール</h1><div class="version">Version 1.5 (2026.03.03 更新)</div></header>
     
     <div class="card">
         <span class="event-name">カスタム統合（イベントを重ねる）</span>
         <div class="controls">
             <select id="baseEvent"></select>
             <select id="overlayEvent"></select>
-            <input type="number" id="offset" value="0" min="0" title="開始日を何日ずらすか">
+            <input type="number" id="offset" value="0" min="0" placeholder="ずらす">
         </div>
         <button onclick="mergeEvents()">統合プレビューを生成</button>
         <div id="previewArea" style="margin-top:15px; display:none;">
             <pre id="mergedText"></pre>
-            <button onclick="copyToClipboard('mergedText')" style="background:#03dac6;">統合結果をコピー</button>
+            <button onclick="copyToClipboard('mergedText')" style="background:#03dac6; margin-top:10px;">統合結果をコピー</button>
         </div>
     </div>
 
@@ -43,7 +43,6 @@
 <div id="toast" class="toast">コピーしました！</div>
 
 <script>
-// マスタデータ
 const rawData = [
     { id: "a", name: "同盟大作戦with軍備･士官", data: {"行商":"◎◎◎◎◎◎◎","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","専門":"◯◎－－－－－","訓練":"－－△◎－－－","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","宝石":"－－◯△－△△","ﾀﾞｲﾔ":"△◎△△◯△△"}, days: 7 },
     { id: "s", name: "季節イベント", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
@@ -52,56 +51,58 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
+function formatText(title, data, days) {
+    let header = "日数　" + Array.from({length: days}, (_, i) => (i + 1).toString()).join('　');
+    let rows = Object.keys(data).map(k => k + "　" + data[k].split('').join('｜'));
+    return title + "\n" + header + "\n" + rows.join('\n');
+}
+
 const app = document.getElementById('app');
 const baseSel = document.getElementById('baseEvent');
 const overSel = document.getElementById('overlayEvent');
 
-// 初期表示
 rawData.forEach(e => {
-    // セレクトボックス追加
     baseSel.add(new Option(e.name, e.id));
     overSel.add(new Option(e.name, e.id));
     
-    // 通常表示用カード
     const d = document.createElement('div');
     d.className = 'card';
-    const text = formatText(e.name, e.data, e.days);
-    d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${text}</pre><button onclick="copyToClipboard('${e.id}')">コピー</button>`;
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'event-name';
+    titleSpan.innerText = e.name;
+    const pre = document.createElement('pre');
+    pre.id = e.id;
+    pre.innerText = formatText(e.name, e.data, e.days);
+    const btn = document.createElement('button');
+    btn.innerText = "コピー";
+    btn.onclick = () => copyToClipboard(e.id);
+    
+    d.appendChild(titleSpan);
+    d.appendChild(pre);
+    d.appendChild(btn);
     app.appendChild(d);
 });
-
-function formatText(title, data, days) {
-    let header = "日数　" + Array.from({length: days}, (_, i) => (i + 1).toString().padStart(1, ' ')).join('　');
-    let rows = Object.keys(data).map(k => `${k}　${data[k].split('').join('｜')}`);
-    return `${title}\n${header}\n${rows.join('\n')}`;
-}
 
 function mergeEvents() {
     const b = rawData.find(x => x.id === baseSel.value);
     const o = rawData.find(x => x.id === overSel.value);
     const shift = parseInt(document.getElementById('offset').value) || 0;
-    
     const maxDays = Math.max(b.days, o.days + shift);
     let merged = {};
     const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
-
     allKeys.forEach(key => {
         let row = "";
         for (let d = 0; d < maxDays; d++) {
-            const bVal = b.data[key]?.[d] || "－";
-            const oVal = o.data[key]?.[d - shift] || "－";
-            
-            // 優先度ロジック
-            if (bVal !== "－" && oVal !== "－") row += "◎"; // 重複したら◎
-            else if (bVal !== "－") row += bVal;
-            else if (oVal !== "－") row += oVal;
+            const bV = b.data[key] ? b.data[key][d] || "－" : "－";
+            const oV = o.data[key] ? o.data[key][d - shift] || "－" : "－";
+            if (bV !== "－" && oV !== "－") row += "◎";
+            else if (bV !== "－") row += bV;
+            else if (oV !== "－") row += oV;
             else row += "－";
         }
         merged[key] = row;
     });
-
-    const res = formatText(`統合：${b.name} + ${o.name}`, merged, maxDays);
-    document.getElementById('mergedText').innerText = res;
+    document.getElementById('mergedText').innerText = formatText("統合結果", merged, maxDays);
     document.getElementById('previewArea').style.display = 'block';
 }
 
