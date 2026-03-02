@@ -5,169 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Task Copier v1.3</title>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #121212; 
-            color: #e0e0e0; 
-            padding: 20px; 
-            margin: 0;
-        }
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; }
-        header { 
-            text-align: center; 
-            padding-bottom: 20px; 
-            border-bottom: 1px solid #333; 
-            margin-bottom: 20px; 
-        }
-        h1 { font-size: 1.4rem; margin: 0; color: #bb86fc; }
-        .version { font-size: 0.8rem; color: #888; margin-top: 5px; }
-        .card { 
-            background: #1e1e1e; 
-            border-radius: 12px; 
-            padding: 16px; 
-            margin-bottom: 20px; 
-            border: 1px solid #333; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .event-name { 
-            font-weight: bold; 
-            font-size: 1.1rem; 
-            margin-bottom: 12px; 
-            display: block; 
-            color: #03dac6; 
-        }
-        pre { 
-            background: #2d2d2d; 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 0.85rem; 
-            overflow-x: auto; 
-            white-space: pre-wrap; 
-            line-height: 1.4; 
-            color: #fff; 
-            border: 1px solid #444; 
-            margin: 0; 
-        }
-        button { 
-            width: 100%; 
-            padding: 14px; 
-            background: #bb86fc; 
-            color: #000; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            margin-top: 12px; 
-            font-size: 1rem;
-        }
-        button:active { transform: scale(0.98); opacity: 0.8; }
-        .toast { 
-            position: fixed; 
-            bottom: 30px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: #03dac6; 
-            color: #000; 
-            padding: 10px 24px; 
-            border-radius: 30px; 
-            display: none; 
-            font-weight: bold; 
-            z-index: 1000; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
+        header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+        h1 { font-size: 1.4rem; color: #bb86fc; margin: 0; }
+        .version { font-size: 0.8rem; color: #888; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
+        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; }
+        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; }
+        button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <header>
-        <h1>📋 イベントタスク・コピー</h1>
-        <div class="version">Version 1.3 (2026.03.03 更新)</div>
-    </header>
+    <header><h1>📋 イベントタスク・コピー</h1><div class="version">Version 1.3 (2026.03.03 更新)</div></header>
     <div id="app"></div>
 </div>
-
 <div id="toast" class="toast">コピーしました！</div>
-
 <script>
 const eventData = [
-    {
-        id: "alliance",
-        name: "同盟大作戦with軍備･士官",
-        text: `同盟大作戦with軍備･士官\n日数　１　２　３　４　５　６　７\n            left: 50%; 
-            transform: translateX(-50%); 
-            background: #03dac6; 
-            color: #000; 
-            padding: 10px 24px; 
-            border-radius: 30px; 
-            display: none; 
-            font-weight: bold; 
-            z-index: 1000; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>📋 イベントタスク・コピー</h1>
-        <div class="version">Version 1.2 (2026.03.03 更新)</div>
-    </header>
-    <div id="app"></div>
-</div>
-
-<div id="toast" class="toast">コピーしました！</div>
-
-<script>
-const eventData = [
-    {
-        id: "alliance",
-        name: "同盟大作戦with軍備･士官",
-        text: `同盟大作戦with軍備･士官\n日数　１　２　３　４　５　６　７\n行商　◎｜◎｜◎｜◎｜◎｜◎｜◎\n火晶　◯｜◯｜－｜－｜◎｜◯｜◯\n加速　◯｜◯｜－｜－｜◎｜◯｜◯\n採集　◎｜－｜◎｜－｜－｜－｜－\n専門　◯｜◎｜－｜－｜－｜－｜－\n訓練　－｜－｜△｜◎｜－｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜－｜◎｜◎\n英装　－｜－｜△｜◯｜△｜◎｜◎\n欠片　△｜◯｜－｜－｜－｜△｜◎\n領装　△｜△｜－｜－｜◯｜△｜◎\n宝石　－｜－｜◯｜△｜－｜△｜△\nﾀﾞｲﾔ　△｜◎｜△｜△｜◯｜△｜△\n※7日目は6日目の続き。半日のみ`
-    },
-    {
-        id: "seasonal",
-        name: "季節イベント",
-        text: `季節イベント\n日数　１　２　３　４　５　６　７\n建造　◯｜－｜－｜－｜－｜◯｜－\n研究　◯｜－｜－｜－｜－｜◯｜－\n訓練　◯｜－｜－｜◎｜－｜◯｜－\n鍵　　◯｜－｜◯｜－｜－｜－｜－\n欠片　◯｜－｜◯｜－｜－｜－｜－\n野獣　－｜◯｜－｜－｜－｜－｜－\n加速　－｜－｜◯｜－｜－｜－｜◯\n英装　－｜－｜－｜－｜◯｜－｜－\nﾀﾞｲﾔ　－｜－｜－｜－｜◯｜－｜－\n採集　－｜－｜－｜－｜－｜◯｜－\n領装　－｜－｜－｜－｜－｜－｜◯`
-    },
-    {
-        id: "kingdom",
-        name: "最強王国準備フェーズ",
-        text: `最強王国準備フェーズ\n日数　１　２　３　４　５\n宝石　◯｜－｜◯｜◯｜－\n火晶　◯｜◯｜－｜－｜◯\n加速　◯｜◯｜－｜－｜◯\nﾙﾚｯﾄ　－｜◯｜◯｜－｜－\n欠片　－｜◯｜◯｜－｜－\n採集　－｜◯｜－｜－｜－\n専門　－｜◯｜◯｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜◯\n野獣　－｜－｜◯｜－｜－\n英装　－｜－｜－｜◯｜◯\n訓練　－｜－｜－｜◯｜－\n領装　－｜－｜－｜－｜◯`
-    },
-    {
-        id: "ice",
-        name: "氷原支配者",
-        text: `氷原支配者\n日数　１　２　３　４　５　６　７\n火晶　◯｜◯｜－｜－｜◯｜－｜◯\n加速　◯｜◯｜－｜－｜◯｜－｜◯\n宝石　◯｜－｜◯｜◯｜－｜－｜－\nﾙﾚｯﾄ　－｜◯｜◯｜－｜－｜－｜－\n欠片　－｜◯｜◯｜－｜－｜－｜◯\n英装　－｜◯｜－｜◯｜◯｜－｜－\n専門　－｜◯｜◯｜－｜－｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜－｜－｜◯\n訓練　－｜－｜－｜◯｜－｜◯｜－\n領装　－｜－｜－｜－｜－｜◯｜◯\n採集　－｜－｜－｜－｜－｜－｜◯`
-    },
-    {
-        id: "officer",
-        name: "軍備競技･士官計画",
-        text: `軍備競技･士官計画\nフェーズ １　２　３　４ (各2日間)\n火晶　◯｜－｜◯｜－\n加速　◯｜－｜◯｜－\n欠片　◯｜－｜－｜◯\n領装　◯｜－｜◯｜◯\n専門　◯｜－｜－｜－\n宝石　－｜◯｜－｜－\n英装　－｜◯｜◯｜◯\n訓練　－｜◯｜－｜－`
-    }
+    { id: "a", name: "同盟大作戦with軍備･士官", text: "同盟大作戦with軍備･士官\n日数　１　２　３　４　５　６　７\n行商　◎｜◎｜◎｜◎｜◎｜◎｜◎\n火晶　◯｜◯｜－｜－｜◎｜◯｜◯\n加速　◯｜◯｜－｜－｜◎｜◯｜◯\n採集　◎｜－｜◎｜－｜－｜－｜－\n専門　◯｜◎｜－｜－｜－｜－｜－\n訓練　－｜－｜△｜◎｜－｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜－｜◎｜◎\n英装　－｜－｜△｜◯｜△｜◎｜◎\n欠片　△｜◯｜－｜－｜－｜△｜◎\n領装　△｜△｜－｜－｜◯｜△｜◎\n宝石　－｜－｜◯｜△｜－｜△｜△\nﾀﾞｲﾔ　△｜◎｜△｜△｜◯｜△｜△\n※7日目は6日目の続き。半日のみ" },
+    { id: "s", name: "季節イベント", text: "季節イベント\n日数　１　２　３　４　５　６　７\n建造　◯｜－｜－｜－｜－｜◯｜－\n研究　◯｜－｜－｜－｜－｜◯｜－\n訓練　◯｜－｜－｜◎｜－｜◯｜－\n鍵　　◯｜－｜◯｜－｜－｜－｜－\n欠片　◯｜－｜◯｜－｜－｜－｜－\n野獣　－｜◯｜－｜－｜－｜－｜－\n加速　－｜－｜◯｜－｜－｜－｜◯\n英装　－｜－｜－｜－｜◯｜－｜－\nﾀﾞｲﾔ　－｜－｜－｜－｜◯｜－｜－\n採集　－｜－｜－｜－｜－｜◯｜－\n領装　－｜－｜－｜－｜－｜－｜◯" },
+    { id: "k", name: "最強王国準備フェーズ", text: "最強王国準備フェーズ\n日数　１　２　３　４　５\n宝石　◯｜－｜◯｜◯｜－\n火晶　◯｜◯｜－｜－｜◯\n加速　◯｜◯｜－｜－｜◯\nﾙﾚｯﾄ　－｜◯｜◯｜－｜－\n欠片　－｜◯｜◯｜－｜－\n採集　－｜◯｜－｜－｜－\n専門　－｜◯｜◯｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜◯\n野獣　－｜－｜◯｜－｜－\n英装　－｜－｜－｜◯｜◯\n訓練　－｜－｜－｜◯｜－\n領装　－｜－｜－｜－｜◯" },
+    { id: "i", name: "氷原支配者", text: "氷原支配者\n日数　１　２　３　４　５　６　７\n火晶　◯｜◯｜－｜－｜◯｜－｜◯\n加速　◯｜◯｜－｜－｜◯｜－｜◯\n宝石　◯｜－｜◯｜◯｜－｜－｜－\nﾙﾚｯﾄ　－｜◯｜◯｜－｜－｜－｜－\n欠片　－｜◯｜◯｜－｜－｜－｜◯\n英装　－｜◯｜－｜◯｜◯｜－｜－\n専門　－｜◯｜◯｜－｜－｜－｜－\nﾍﾟｯﾄ　－｜－｜◯｜－｜－｜－｜◯\n訓練　－｜－｜－｜◯｜－｜◯｜－\n領装　－｜－｜－｜－｜－｜◯｜◯\n採集　－｜－｜－｜－｜－｜－｜◯" },
+    { id: "o", name: "軍備競技･士官計画", text: "軍備競技･士官計画\n日数　１　２　３　４　５　６　７　８\n火晶　◯｜◯｜－｜－｜◯｜◯｜－｜－\n加速　◯｜◯｜－｜－｜◯｜◯｜－｜－\n欠片　◯｜◯｜－｜－｜－｜－｜◯｜◯\n領装　◯｜◯｜－｜－｜◯｜◯｜◯｜◯\n専門　◯｜◯｜－｜－｜－｜－｜－｜－\n宝石　－｜－｜◯｜◯｜－｜－｜－｜－\n英装　－｜－｜◯｜◯｜◯｜◯｜◯｜◯\n訓練　－｜－｜◯｜◯｜－｜－｜－｜－" }
 ];
-
 const app = document.getElementById('app');
-eventData.forEach(event => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-        <span class="event-name">${event.name}</span>
-        <pre id="${event.id}">${event.text}</pre>
-        <button onclick="copyToClipboard('${event.id}')">この内容をコピー</button>
-    `;
-    app.appendChild(card);
+eventData.forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${e.text}</pre><button onclick="copyTo('${e.id}')">コピー</button>`;
+    app.appendChild(d);
 });
-
-function copyToClipboard(id) {
-    const text = document.getElementById(id).innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        const toast = document.getElementById('toast');
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+function copyTo(id) {
+    const t = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(t).then(() => {
+        const s = document.getElementById('toast');
+        s.style.display = 'block';
+        setTimeout(() => s.style.display = 'none', 2000);
     });
 }
-</script>
-</body>
-</html>
+</script></body></html>
