@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v1.8</title>
+    <title>Event Task Merger v1.9</title>
     <style>
+        /* 等幅フォントを指定してズレを防止 */
+        pre { 
+            font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
+            background: #2d2d2d; 
+            padding: 12px; 
+            border-radius: 8px; 
+            font-size: 0.85rem; 
+            overflow-x: auto; 
+            white-space: pre; /* 折り返しを無効にして列を維持 */
+            color: #fff; 
+            border: 1px solid #444; 
+            margin: 0; 
+            line-height: 1.8; 
+        }
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: auto; }
         header { text-align: center; border-bottom: 1px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
@@ -12,20 +26,17 @@
         .version { font-size: 0.8rem; color: #888; }
         .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
         .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr 60px; gap: 10px; margin-bottom: 10px; }
         .view-settings { background: #252525; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed #444; }
-        .legend { font-size: 0.75rem; color: #aaa; margin-bottom: 10px; line-height: 1.4; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr 60px; gap: 10px; margin-bottom: 10px; }
         select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
-        pre { background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.6; }
         button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:active { transform: scale(0.98); opacity: 0.8; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
         label { font-size: 0.8rem; color: #bbb; display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 1.8 (2026.03.03 更新)</div></header>
+    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 1.9 (2026.03.03 更新)</div></header>
     
     <div class="view-settings">
         <label>表示・コピーする開始日:</label>
@@ -35,7 +46,6 @@
 
     <div class="card">
         <span class="event-name">カスタム統合</span>
-        <div class="legend">◎:重複 / 大,季,準,氷,軍:単体タスク</div>
         <div class="controls">
             <div><label>ベース</label><select id="baseEvent"></select></div>
             <div><label>重ねる</label><select id="overlayEvent"></select></div>
@@ -61,20 +71,25 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", short: "軍", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
+// 半角数字を全角数字に変換する関数
+function toFullWidth(n) {
+    return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0);
+}
+
 function formatText(title, data, totalDays) {
     const start = parseInt(document.getElementById('startDay').value) || 1;
-    // 日数ヘッダー作成
+    
+    // 日数ヘッダーを全角数字で作成
     let dayLabels = [];
     for (let i = start; i <= totalDays; i++) {
-        dayLabels.push(i.toString());
+        dayLabels.push(toFullWidth(i));
     }
     let header = "日数　" + dayLabels.join('　');
 
-    // タスク行作成
+    // 各行を作成
     let rows = Object.keys(data).map(key => {
-        const fullRow = data[key]; // 記号の文字列
-        // startDayに合わせて切り出し (indexは start-1)
-        const slicedRow = fullRow.substring(start - 1, totalDays);
+        const slicedRow = data[key].substring(start - 1, totalDays);
+        // 記号の間も「全角の｜」や「全角スペース」で繋ぐ
         return key + "　" + slicedRow.split('').join('｜');
     });
 
@@ -93,13 +108,9 @@ function refreshAll() {
         d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${formatText(e.name, e.data, e.days)}</pre><button onclick="copyToClipboard('${e.id}')">コピー</button>`;
         app.appendChild(d);
     });
-    // もし統合プレビューが開いていればそれも更新
-    if (document.getElementById('previewArea').style.display === 'block') {
-        mergeEvents();
-    }
+    if (document.getElementById('previewArea').style.display === 'block') mergeEvents();
 }
 
-// 初期化
 rawData.forEach(e => {
     baseSel.add(new Option(e.name, e.id));
     overSel.add(new Option(e.name, e.id));
