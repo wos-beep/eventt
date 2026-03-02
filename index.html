@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v2.0</title>
+    <title>Event Task Merger v2.1</title>
     <style>
         pre { 
             font-family: "Courier New", Consolas, "Liberation Mono", Menlo, "BIZ UDゴシック", "MS Gothic", monospace; 
-            background: #2d2d2d; padding: 12px; border-radius: 8px; font-size: 0.85rem; 
+            background: #2d2d2d; padding: 15px; border-radius: 8px; font-size: 0.85rem; 
             overflow-x: auto; white-space: pre; color: #fff; border: 1px solid #444; margin: 0; line-height: 1.8; 
         }
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
@@ -16,40 +16,47 @@
         h1 { font-size: 1.4rem; color: #bb86fc; margin: 0; }
         .version { font-size: 0.8rem; color: #888; }
         .card { background: #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333; }
-        .event-name { font-weight: bold; color: #03dac6; margin-bottom: 10px; display: block; }
-        .view-settings { background: #252525; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed #444; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr 60px; gap: 10px; margin-bottom: 10px; }
-        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .full-width { grid-column: span 2; }
+        .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         label { font-size: 0.8rem; color: #bbb; display: block; margin-bottom: 4px; }
+        select, input { background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: #bb86fc; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1rem; }
+        button:hover { opacity: 0.9; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
+        .legend { font-size: 0.75rem; color: #888; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.0 (2026.03.03 更新)</div></header>
+    <header><h1>📋 イベント統合ツール</h1><div class="version">Version 2.1 (2026.03.03)</div></header>
     
-    <div class="view-settings">
-        <label>表示・コピーする開始日:</label>
-        <input type="number" id="startDay" value="1" min="1" max="8" onchange="refreshAll()" style="width: 80px;">
-        <span style="font-size: 0.8rem; color: #888; margin-left: 10px;">日目以降を表示</span>
-    </div>
-
     <div class="card">
-        <span class="event-name">カスタム統合</span>
-        <div class="controls">
-            <div><label>ベース</label><select id="baseEvent"></select></div>
-            <div><label>重ねる</label><select id="overlayEvent"></select></div>
-            <div><label>ずらす</label><input type="number" id="offset" value="0" min="0"></div>
+        <div class="settings-grid">
+            <div class="full-width">
+                <label>ベースイベント</label>
+                <select id="baseEvent" onchange="mergeEvents()"></select>
+            </div>
+            <div>
+                <label>重ねるイベント</label>
+                <select id="overlayEvent" onchange="mergeEvents()"></select>
+            </div>
+            <div>
+                <label>ずらし (日)</label>
+                <input type="number" id="offset" value="0" min="0" onchange="mergeEvents()">
+            </div>
+            <div class="full-width">
+                <label>表示開始日 (◯日目以降を表示)</label>
+                <input type="number" id="startDay" value="1" min="1" max="8" onchange="mergeEvents()">
+            </div>
         </div>
-        <button onclick="mergeEvents()">統合プレビューを生成</button>
-        <div id="previewArea" style="margin-top:15px; display:none;">
+        
+        <div id="previewArea">
             <pre id="mergedText"></pre>
-            <button onclick="copyToClipboard('mergedText')" style="background:#03dac6; margin-top:10px;">統合結果をコピー</button>
+            <button onclick="copyToClipboard()">結果をコピー</button>
         </div>
+        <div class="legend">◎:重複 / 大,季,準,氷,軍:単体タスク</div>
     </div>
-
-    <div id="app"></div>
 </div>
 <div id="toast" class="toast">コピーしました！</div>
 
@@ -62,81 +69,74 @@ const rawData = [
     { id: "o", name: "軍備競技･士官計画", short: "軍", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
 ];
 
-function toFullWidth(n) { return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0); }
-
-function formatText(title, data, totalDays) {
-    const start = parseInt(document.getElementById('startDay').value) || 1;
-    let dayLabels = [];
-    for (let i = start; i <= totalDays; i++) dayLabels.push(toFullWidth(i));
-    
-    let rows = [];
-    Object.keys(data).forEach(key => {
-        const slicedRow = data[key].substring(start - 1, totalDays);
-        // 重要：この期間に予定があるかチェック
-        const hasTask = /[^－]/.test(slicedRow); 
-        if (hasTask) {
-            rows.push(key + "　" + slicedRow.split('').join('｜'));
-        }
-    });
-
-    if (rows.length === 0) return title + "\n(予定なし)";
-    return title + (start > 1 ? ` (${start}日目以降)` : "") + "\n" + "日数　" + dayLabels.join('　') + "\n" + rows.join('\n');
-}
-
-const app = document.getElementById('app');
 const baseSel = document.getElementById('baseEvent');
 const overSel = document.getElementById('overlayEvent');
 
-function refreshAll() {
-    app.innerHTML = "";
+function init() {
     rawData.forEach(e => {
-        const d = document.createElement('div');
-        d.className = 'card';
-        d.innerHTML = `<span class="event-name">${e.name}</span><pre id="${e.id}">${formatText(e.name, e.data, e.days)}</pre><button onclick="copyToClipboard('${e.id}')">コピー</button>`;
-        app.appendChild(d);
+        baseSel.add(new Option(e.name, e.id));
+        overSel.add(new Option(e.name, e.id));
     });
-    if (document.getElementById('previewArea').style.display === 'block') mergeEvents();
+    overSel.add(new Option("－－（なし）－－", "none"), 0);
+    overSel.value = "none";
+    mergeEvents();
 }
 
-rawData.forEach(e => {
-    baseSel.add(new Option(e.name, e.id));
-    overSel.add(new Option(e.name, e.id));
-});
-refreshAll();
+function toFullWidth(n) { return String.fromCharCode(n.toString().charCodeAt(0) + 0xFEE0); }
 
 function mergeEvents() {
     const b = rawData.find(x => x.id === baseSel.value);
-    const o = rawData.find(x => x.id === overSel.value);
+    const o = rawData.find(x => x.id === overSel.value) || null;
     const shift = parseInt(document.getElementById('offset').value) || 0;
-    const maxDays = Math.max(b.days, o.days + shift);
+    const start = parseInt(document.getElementById('startDay').value) || 1;
+    
+    const maxDays = o ? Math.max(b.days, o.days + shift) : b.days;
     let merged = {};
-    const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
+    const allKeys = new Set([...Object.keys(b.data), ...(o ? Object.keys(o.data) : [])]);
 
     allKeys.forEach(key => {
         let row = "";
         for (let d = 0; d < maxDays; d++) {
-            const bV = (b.data[key] && b.data[key][d]) ? b.data[key][d] : "－";
-            const oV = (o.data[key] && o.data[key][d - shift]) ? o.data[key][d - shift] : "－";
-            if (bV !== "－" && oV !== "－") row += "◎";
-            else if (bV !== "－") row += b.short;
-            else if (oV !== "－") row += o.short;
+            const bVal = b.data[key]?.[d] || "－";
+            const oVal = (o && o.data[key]) ? (o.data[key][d - shift] || "－") : "－";
+            
+            if (bVal !== "－" && oVal !== "－") row += "◎";
+            else if (bVal !== "－") row += b.short;
+            else if (oVal !== "－") row += o.short;
             else row += "－";
         }
         merged[key] = row;
     });
 
-    document.getElementById('mergedText').innerText = formatText(`統合：${b.name}＋${o.name}`, merged, maxDays);
-    document.getElementById('previewArea').style.display = 'block';
+    // テキスト生成
+    let dayLabels = [];
+    for (let i = start; i <= maxDays; i++) dayLabels.push(toFullWidth(i));
+    
+    let rows = [];
+    Object.keys(merged).forEach(key => {
+        const slicedRow = merged[key].substring(start - 1, maxDays);
+        if (/[^－]/.test(slicedRow)) {
+            rows.push(key + "　" + slicedRow.split('').join('｜'));
+        }
+    });
+
+    const title = o ? `${b.short}＋${o.short}` : b.name;
+    const resultText = title + (start > 1 ? ` (${start}日目〜)` : "") + "\n" + 
+                       "日数　" + dayLabels.join('　') + "\n" + rows.join('\n');
+    
+    document.getElementById('mergedText').innerText = rows.length > 0 ? resultText : "表示できるタスクがありません";
 }
 
-function copyToClipboard(id) {
-    const t = document.getElementById(id).innerText;
+function copyToClipboard() {
+    const t = document.getElementById('mergedText').innerText;
     navigator.clipboard.writeText(t).then(() => {
         const s = document.getElementById('toast');
         s.style.display = 'block';
         setTimeout(() => s.style.display = 'none', 2000);
     });
 }
+
+init();
 </script>
 </body>
 </html>
