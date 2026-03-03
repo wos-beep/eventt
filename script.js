@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.4";
+const APP_VERSION = "6.4.5";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -8,16 +8,14 @@ fetch('event.json').then(res => res.json()).then(data => {
 });
 
 function initApp() {
-    const bSel = document.getElementById('baseEvent');
-    const oSel = document.getElementById('overlayEvent');
-    rawData.forEach(e => {
-        bSel.add(new Option(e.name, e.id));
-        oSel.add(new Option(e.name, e.id));
-    });
-    const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding'];
-    inputs.forEach(id => {
-        document.getElementById(id).addEventListener('input', () => {
-            if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById(id).value;
+    const ids = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'usePadding'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (id === 'baseEvent' || id === 'overlayEvent') {
+            rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
+        }
+        el.addEventListener('input', () => {
+            if(id === 'zenPadding') document.getElementById('zenVal').innerText = el.value;
             if(id === 'baseEvent') filterOverlayOptions();
             updateOutput();
         });
@@ -31,12 +29,8 @@ function filterOverlayOptions() {
     const oSel = document.getElementById('overlayEvent');
     Array.from(oSel.options).forEach(opt => {
         if (!opt.value) return;
-        if (opt.value === bValue) {
-            opt.style.display = 'none';
-            if (oSel.value === bValue) oSel.value = "";
-        } else {
-            opt.style.display = 'block';
-        }
+        opt.style.display = (opt.value === bValue) ? 'none' : 'block';
+        if (oSel.value === bValue) oSel.value = "";
     });
 }
 
@@ -57,8 +51,9 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
+    const isPaddingEnabled = document.getElementById('usePadding').checked;
     const startRowSetting = parseInt(document.getElementById('startRow').value);
-    const manualZen = parseInt(document.getElementById('zenPadding').value);
+    const zenCount = parseInt(document.getElementById('zenPadding').value);
 
     let combined = {};
     let totalMax = b.days;
@@ -87,39 +82,34 @@ function updateOutput() {
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    let zenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
-    const heavyPadding = "　".repeat(zenCount);
+    const heavyPadding = isPaddingEnabled ? "　".repeat(zenCount) : "";
 
     let lines = [];
     let currentLineIdx = 1;
 
-    // パディングを付与するか判定する関数（データ行のみに限定）
-    const getFinalLine = (text, isDataRow = false) => {
-        const pad = (isDataRow && currentLineIdx >= startRowSetting) ? heavyPadding : "";
+    const pushRawLine = (text) => {
+        const pad = (isPaddingEnabled && currentLineIdx >= startRowSetting) ? heavyPadding : "";
+        lines.push(text + pad);
         currentLineIdx++;
-        return text + pad;
     };
 
-    // 1-2行目：パディングなし
-    lines.push(getFinalLine(title));
-    if(b.id === "a") lines.push(getFinalLine("行商:毎日◎(SSR出せば100k~)"));
+    // 出力
+    pushRawLine(title);
+    if(b.id === "a") pushRawLine("行商:毎日◎(SSR出せば100k~)");
     
-    // 3行目：日数（ここはパディングなしを推奨）
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
-    lines.push(getFinalLine("日数" + sep + hNums.join(sep)));
+    pushRawLine("日数" + sep + hNums.join(sep));
     
-    // 4行目以降：データ行（ここにパディングを適用）
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').length) {
-            lines.push(getFinalLine(k + sep + dStr.split('').join(sep), true));
+            pushRawLine(k + sep + dStr.split('').join(sep));
         }
     });
 
-    // 最終行：パディングなし
-    if(b.id === "a") lines.push(getFinalLine("※7日は6日の続き(半日)"));
+    if(b.id === "a") pushRawLine("※7日は6日の続き(半日)");
 
     document.getElementById('outputText').innerText = lines.join('\n');
 }
