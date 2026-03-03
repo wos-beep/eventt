@@ -74,16 +74,29 @@ function updateOutput() {
     }
 
 
-    // --- レイアウト構成 (v5.9.5: 壁の厚みを4個に最適化) ---
+    // --- レイアウト構成 (v5.9.6) ---
     const isSlim = totalMax >= 8;
     const sep = isSlim ? "|" : "｜"; 
-    const headGap = " "; 
-    
-    // 8個だと厚すぎてデータが落下したため、4個に減らして「1行」に収まる限界を攻めます
-    const rowSuffix = "\u2800\u2800\u2800\u2800"; 
+    // 自爆(8個)と合体(4個)の間の「5個」で勝負
+    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800"; 
 
     let res = title + "\n";
     if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
+    
+    // 日数ヘッダー (項目名とセパレータの間のスペースを撤廃)
+    res += "日数" + sep + hNums.join(sep) + rowSuffix + "\n";
+    
+    // データ行
+    Object.keys(combined).forEach(k => {
+        if (k === "行商") return;
+        let dStr = combined[k].substring(rStart - 1, totalMax);
+        if (dStr.replace(/－/g, '').length) {
+            // スペースを一切入れず【項目名+区切り線+データ+壁】で構成
+            res += k + sep + dStr.split('').join(sep) + rowSuffix + "\n";
+        }
+    });
+
+    if(b.id === "a") res += "※7日は6日の続き(半日)" + rowSuffix;
     
     // 日数ヘッダー
     res += "日数" + headGap + sep;
