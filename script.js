@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.5";
+const APP_VERSION = "6.4.6";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -78,22 +78,23 @@ function updateOutput() {
             }
             combined[k] = row;
         });
-    } else { combined = b.data; }
+    } else { combined = JSON.parse(JSON.stringify(b.data)); }
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    const heavyPadding = isPaddingEnabled ? "　".repeat(zenCount) : "";
+    const heavyPadding = (isPaddingEnabled && zenCount > 0) ? "　".repeat(zenCount) : "";
 
     let lines = [];
     let currentLineIdx = 1;
 
     const pushRawLine = (text) => {
+        if (!text || text.trim() === "") return; // 空文字は絶対に入れない
         const pad = (isPaddingEnabled && currentLineIdx >= startRowSetting) ? heavyPadding : "";
         lines.push(text + pad);
         currentLineIdx++;
     };
 
-    // 出力
+    // 構築
     pushRawLine(title);
     if(b.id === "a") pushRawLine("行商:毎日◎(SSR出せば100k~)");
     
@@ -104,14 +105,16 @@ function updateOutput() {
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
-        if (dStr && dStr.replace(/－/g, '').length) {
+        // 「－」以外の有効なデータがある場合のみ行を追加
+        if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
             pushRawLine(k + sep + dStr.split('').join(sep));
         }
     });
 
     if(b.id === "a") pushRawLine("※7日は6日の続き(半日)");
 
-    document.getElementById('outputText').innerText = lines.join('\n');
+    // 最終的な出力から余計な空行を完全に排除
+    document.getElementById('outputText').innerText = lines.filter(l => l.length > 0).join('\n');
 }
 
 function step(id, val) {
