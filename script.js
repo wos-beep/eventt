@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.9
+ * @version 6.0.1
  * @updated 2026-03-03
- * @description 1行固定長(パディング)方式により、9日間表示等の横滑り・落下を完全防止
+ * @description 11行目以降にのみ強力なパディングを適用し、後半の横滑りを防止
  */
-const APP_VERSION = "5.9.9";
+const APP_VERSION = "6.0.1";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
@@ -73,46 +73,47 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成ロジック (v5.9.9) ---
+    // --- レイアウト構成ロジック (v6.0.1) ---
     const isSlim = totalMax >= 8;
     const sep = isSlim ? "|" : "｜"; 
     
-    /**
-     * 行末を不可視文字で埋めて固定長にする関数
-     * 17:17の画像(9日間)を基準に、自爆しない限界の幅(21文字分)を狙います
-     */
-    const targetWidth = 21; 
-    const padChar = "\u2800"; // 不可視文字
+    // 手動成功例に基づくパディング（全角スペース + 不可視文字）
+    // 日数が10日の時は自爆を防ぐため少し控えめに調整
+    const heavyPadding = (totalMax >= 10) ? "　\u2800\u2800" : "　　　\u2800\u2800\u2800";
 
-    function applyPadding(text) {
-        // 現在の文字列の長さ(全角・半角混在)を取得。不足分をパディング。
-        // ※厳密な幅計算は困難なため、文字数ベースで制御
-        const currentLen = text.length;
-        const diff = targetWidth - currentLen;
-        return text + (diff > 0 ? padChar.repeat(diff) : padChar);
-    }
-
-    let res = title + "\n";
-    if(b.id === "a") res += applyPadding("商:毎日◎(SSR出せば100k~)") + "\n";
+    let lines = [];
+    lines.push(title);
+    if(b.id === "a") lines.push("商:毎日◎(SSR出せば100k~)");
     
     // 日数ヘッダー
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
-    res += applyPadding("日数" + sep + hNums.join(sep)) + "\n";
+    lines.push("日数" + sep + hNums.join(sep));
     
-    // データ行
+    // データ行の構築
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
         if (dStr.replace(/－/g, '').length) {
-            // スペースを入れず密着させ、行末だけパディングで埋める
-            const line = k + sep + dStr.split('').join(sep);
-            res += applyPadding(line) + "\n";
+            lines.push(k + sep + dStr.split('').join(sep));
+        }
+    });
+    
+    if(b.id === "a") lines.push("※7日は6日の続き(半日)");
+
+    // --- 行数に応じた最終加工 ---
+    let finalOutput = "";
+    lines.forEach((line, index) => {
+        // indexは0から始まるため、11行目は index 10
+        // 手動検証の結果に基づき、10行目(index 9)まではそのまま、11行目からパディング
+        if (index >= 10) {
+            finalOutput += line + heavyPadding + "\n";
+        } else {
+            finalOutput += line + "\n";
         }
     });
 
-    if(b.id === "a") res += applyPadding("※7日は6日の続き(半日)");
-    document.getElementById('outputText').innerText = res.trim();
+    document.getElementById('outputText').innerText = finalOutput.trim();
 }
 
 function step(id, val) {
