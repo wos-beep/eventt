@@ -107,7 +107,7 @@ function updateOutput() {
 
     let lines = [];
     lines.push(title);
-    if(b.id === "a") lines.push("商:毎日◎(SSR出せば100k~)");
+    if(b.id === "a") lines.push("行商:毎日◎(SSR出せば100k~)");
     
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) {
