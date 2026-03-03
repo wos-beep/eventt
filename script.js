@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.7";
+const APP_VERSION = "6.4.8";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -15,7 +15,7 @@ function initApp() {
             rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
         }
         el.addEventListener('input', () => {
-            if(id === 'zenPadding') document.getElementById('zenVal').innerText = el.value;
+            if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById('zenPadding').value;
             if(id === 'baseEvent') filterOverlayOptions();
             updateOutput();
         });
@@ -84,32 +84,29 @@ function updateOutput() {
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    
-    // パディング（壁）の定義
-    // ONの時は指定数、OFFの時でも吸い込み防止に最低1文字の全角スペースを入れる
-    const heavyPadding = isPaddingEnabled ? "　".repeat(Math.max(1, zenCount)) : "　";
+    const heavyPadding = isPaddingEnabled ? "　".repeat(zenCount) : "";
 
     let lines = [];
     let currentLineIdx = 1;
 
     const pushRawLine = (text) => {
-        if (!text || text.trim() === "") return;
-        // 開始行以降、またはパディングOFF時でも最低限の「壁」を付与
-        const needsPad = (isPaddingEnabled && currentLineIdx >= startRowSetting) || (!isPaddingEnabled);
-        const pad = needsPad ? heavyPadding : "";
-        lines.push(text + pad);
+        if (!text) return;
+        const cleanText = text.trim();
+        if (cleanText === "") return;
+
+        const pad = (isPaddingEnabled && currentLineIdx >= startRowSetting) ? heavyPadding : "";
+        lines.push(cleanText + pad);
         currentLineIdx++;
     };
 
     // --- 出力構成 ---
     pushRawLine(title);
     
-    // 日数行
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
     pushRawLine("日数" + sep + hNums.join(sep));
     
-    // データ行（JSONの順序通り）
+    // データ行（行商を含め、JSONの並び順通りに表示）
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
@@ -119,7 +116,8 @@ function updateOutput() {
 
     if(b.id === "a") pushRawLine("※7日は6日の続き(半日)");
 
-    document.getElementById('outputText').innerText = lines.join('\n');
+    // フィルタリングして空要素を除去し、結合
+    document.getElementById('outputText').innerText = lines.filter(l => l && l.trim().length > 0).join('\n');
 }
 
 function step(id, val) {
