@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.8
+ * @version 5.9.9
  * @updated 2026-03-03
- * @description 不可視文字(\u2800)による強制改行制御、8日以上半角|、大判定修正済み
+ * @description 1行固定長(パディング)方式により、9日間表示等の横滑り・落下を完全防止
  */
-const APP_VERSION = "5.9.8";
+const APP_VERSION = "5.9.9";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
@@ -73,35 +73,45 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成 (v5.9.8: スペース完全排除版) ---
+    // --- レイアウト構成ロジック (v5.9.9) ---
     const isSlim = totalMax >= 8;
-    // 【重要】前後にスペースを一切入れない純粋なセパレーター
     const sep = isSlim ? "|" : "｜"; 
     
-    // 行末の壁（不可視文字）を6個に設定
-    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800\u2800"; 
+    /**
+     * 行末を不可視文字で埋めて固定長にする関数
+     * 17:17の画像(9日間)を基準に、自爆しない限界の幅(21文字分)を狙います
+     */
+    const targetWidth = 21; 
+    const padChar = "\u2800"; // 不可視文字
+
+    function applyPadding(text) {
+        // 現在の文字列の長さ(全角・半角混在)を取得。不足分をパディング。
+        // ※厳密な幅計算は困難なため、文字数ベースで制御
+        const currentLen = text.length;
+        const diff = targetWidth - currentLen;
+        return text + (diff > 0 ? padChar.repeat(diff) : padChar);
+    }
 
     let res = title + "\n";
-    if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)\n";
+    if(b.id === "a") res += applyPadding("商:毎日◎(SSR出せば100k~)") + "\n";
     
-    // 日数ヘッダー (密着)
+    // 日数ヘッダー
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
-    res += "日数" + sep + hNums.join(sep) + rowSuffix + "\n";
+    res += applyPadding("日数" + sep + hNums.join(sep)) + "\n";
     
     // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
         if (dStr.replace(/－/g, '').length) {
-            // 変数を使わず、項目名kとsepを直接+で繋いでスペースを排除
-            const formattedData = dStr.split('').join(sep);
-            res += k + sep + formattedData + rowSuffix + "\n";
+            // スペースを入れず密着させ、行末だけパディングで埋める
+            const line = k + sep + dStr.split('').join(sep);
+            res += applyPadding(line) + "\n";
         }
     });
 
-    if(b.id === "a") res += "※7日は6日の続き(半日)" + rowSuffix;
-    
+    if(b.id === "a") res += applyPadding("※7日は6日の続き(半日)");
     document.getElementById('outputText').innerText = res.trim();
 }
 
