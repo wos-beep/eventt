@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.5
+ * @version 5.9.8
  * @updated 2026-03-03
  * @description 不可視文字(\u2800)による強制改行制御、8日以上半角|、大判定修正済み
  */
-const APP_VERSION = "5.9.5";
+const APP_VERSION = "5.9.8";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
@@ -73,17 +73,20 @@ function updateOutput() {
         combined = b.data;
     }
 
-
-    // --- レイアウト構成 (v5.9.6) ---
+    // --- レイアウト構成 (v5.9.8: スペース完全排除版) ---
     const isSlim = totalMax >= 8;
+    // 【重要】前後にスペースを一切入れない純粋なセパレーター
     const sep = isSlim ? "|" : "｜"; 
-    // 自爆(8個)と合体(4個)の間の「5個」で勝負
-    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800"; 
+    
+    // 行末の壁（不可視文字）を6個に設定
+    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800\u2800"; 
 
     let res = title + "\n";
-    if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
+    if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)\n";
     
-    // 日数ヘッダー (項目名とセパレータの間のスペースを撤廃)
+    // 日数ヘッダー (密着)
+    let hNums = [];
+    for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
     res += "日数" + sep + hNums.join(sep) + rowSuffix + "\n";
     
     // データ行
@@ -91,26 +94,9 @@ function updateOutput() {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
         if (dStr.replace(/－/g, '').length) {
-            // スペースを一切入れず【項目名+区切り線+データ+壁】で構成
-            res += k + sep + dStr.split('').join(sep) + rowSuffix + "\n";
-        }
-    });
-
-    if(b.id === "a") res += "※7日は6日の続き(半日)" + rowSuffix;
-    
-    // 日数ヘッダー
-    res += "日数" + headGap + sep;
-    let hNums = [];
-    for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
-    res += hNums.join(sep) + rowSuffix + "\n";
-    
-    // データ行
-    Object.keys(combined).forEach(k => {
-        if (k === "行商") return;
-        let dStr = combined[k].substring(rStart - 1, totalMax);
-        if (dStr.replace(/－/g, '').length) {
-            // 項目名 + 半角空き + | + データ + 4個の壁
-            res += k + headGap + sep + dStr.split('').join(sep) + rowSuffix + "\n";
+            // 変数を使わず、項目名kとsepを直接+で繋いでスペースを排除
+            const formattedData = dStr.split('').join(sep);
+            res += k + sep + formattedData + rowSuffix + "\n";
         }
     });
 
