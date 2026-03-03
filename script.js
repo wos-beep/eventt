@@ -1,4 +1,4 @@
-const APP_VERSION = "6.5.0";
+const APP_VERSION = "6.5.1";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -11,6 +11,7 @@ function initApp() {
     const ids = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'usePadding'];
     ids.forEach(id => {
         const el = document.getElementById(id);
+        if (!el) return;
         if (id === 'baseEvent' || id === 'overlayEvent') {
             rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
         }
@@ -43,9 +44,10 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-function updateOutput() {
-    if (!rawData.length) return;
+// 文字列生成ロジックを独立（プレビューとコピーで共通化）
+function generateFinalText() {
     const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
+    if (!b) return "";
     const oId = document.getElementById('overlayEvent').value;
     const o = oId ? rawData.find(x => x.id === oId) : null;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
@@ -89,16 +91,15 @@ function updateOutput() {
     let lines = [];
     let currentRowNum = 1;
 
-    // 行追加ロジック（完全に純粋なテキストのみを蓄積）
     const addLine = (text) => {
-        if (!text || text.toString().trim() === "") return;
+        if (!text) return;
         const base = text.toString().trim();
+        if (base === "") return;
         const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
         lines.push(base + pad);
         currentRowNum++;
     };
 
-    // 順次追加
     addLine(title);
     
     let hNums = [];
@@ -114,14 +115,13 @@ function updateOutput() {
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    // 【最重要】最終フィルタリング
-    // 1. 各要素をトリムする
-    // 2. 空白・改行のみの要素を物理的に削除する
-    // 3. 配列が連続した改行コードを作らないように join する
-    const cleanLines = lines.map(l => l.trim()).filter(l => l.length > 0);
-    const finalResult = cleanLines.join('\n');
+    return lines.map(l => l.trimEnd()).filter(l => l.length > 0).join('\n');
+}
 
-    document.getElementById('outputText').innerText = finalResult;
+function updateOutput() {
+    if (!rawData.length) return;
+    const finalText = generateFinalText();
+    document.getElementById('outputText').innerText = finalText;
 }
 
 function step(id, val) {
@@ -130,12 +130,30 @@ function step(id, val) {
     updateOutput();
 }
 
+// Windows Chrome対策：隠しtextareaを用いたコピー
 function copyToClipboard() {
-    const text = document.getElementById('outputText').innerText;
-    if (!text || text.trim() === "") return;
-    navigator.clipboard.writeText(text).then(() => {
+    const text = generateFinalText();
+    if (!text) return;
+
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    // 画面外に配置
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    
+    textArea.focus();
+    textArea.select();
+
+    try {
+        document.execCommand('copy');
         const s = document.getElementById('toast');
         s.style.display = 'block';
         setTimeout(() => s.style.display = 'none', 1500);
-    });
+    } catch (err) {
+        console.error('コピー失敗', err);
+    }
+
+    document.body.removeChild(textArea);
 }
