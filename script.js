@@ -1,4 +1,4 @@
-const APP_VERSION = "6.5.8";
+const APP_VERSION = "6.5.9";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -30,13 +30,11 @@ function initApp() {
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-
         if (id === 'baseEvent' || id === 'overlayEvent') {
             rawData.forEach(e => { 
                 if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); 
             });
         }
-
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
                 const zVal = document.getElementById('zenVal');
@@ -69,7 +67,6 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-// Windows判定（Client Hints + UA文字列）
 function isWindows() {
     if (navigator.userAgentData && navigator.userAgentData.platform) {
         return navigator.userAgentData.platform.includes("Windows");
@@ -83,20 +80,19 @@ function generateFinalText(forceLF = false) {
     const b = rawData.find(x => x.id === bEl.value);
     if (!b) return "";
 
+    const isWin = !forceLF && isWindows();
+    // Windows判定時のみゼロ幅スペースをガードとして使用
+    const guard = isWin ? "\u200B" : "";
+    const nl = isWin ? "\r\n" : "\n";
+
     const oIdEl = document.getElementById('overlayEvent');
     const oId = oIdEl ? oIdEl.value : "";
     const o = oId ? rawData.find(x => x.id === oId) : null;
-    
-    const sEl = document.getElementById('overlayShift');
-    const shift = sEl ? parseInt(sEl.value) || 0 : 0;
-    const rsEl = document.getElementById('rangeStart');
-    const rStart = rsEl ? parseInt(rsEl.value) || 1 : 1;
-    const upEl = document.getElementById('usePadding');
-    const isPaddingEnabled = upEl ? upEl.checked : false;
-    const srEl = document.getElementById('startRow');
-    const startRowSetting = srEl ? parseInt(srEl.value) : 1;
-    const zpEl = document.getElementById('zenPadding');
-    const zenCount = zpEl ? parseInt(zpEl.value) : 0;
+    const shift = (document.getElementById('overlayShift')) ? parseInt(document.getElementById('overlayShift').value) || 0 : 0;
+    const rStart = (document.getElementById('rangeStart')) ? parseInt(document.getElementById('rangeStart').value) || 1 : 1;
+    const isPaddingEnabled = (document.getElementById('usePadding')) ? document.getElementById('usePadding').checked : false;
+    const startRowSetting = (document.getElementById('startRow')) ? parseInt(document.getElementById('startRow').value) : 1;
+    const zenCount = (document.getElementById('zenPadding')) ? parseInt(document.getElementById('zenPadding').value) : 0;
 
     let combined = {};
     let totalMax = b.days;
@@ -121,9 +117,7 @@ function generateFinalText(forceLF = false) {
             }
             combined[k] = row;
         });
-    } else { 
-        combined = JSON.parse(JSON.stringify(b.data)); 
-    }
+    } else { combined = JSON.parse(JSON.stringify(b.data)); }
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
@@ -136,7 +130,8 @@ function generateFinalText(forceLF = false) {
         const base = text.toString().trim();
         if (base === "") return;
         const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
-        lines.push(base + pad);
+        // 行末にガード文字を結合
+        lines.push(base + pad + guard);
         currentRowNum++;
     };
 
@@ -151,16 +146,12 @@ function generateFinalText(forceLF = false) {
             addLine(k + sep + dStr.split('').join(sep));
         }
     });
-
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    // Windows環境かつプレビュー表示でない場合は CRLF を使用
-    const nl = (!forceLF && isWindows()) ? "\r\n" : "\n";
     return lines.join(nl);
 }
 
 function updateOutput() {
-    // 画面表示は常に LF (\n)
     const displayText = generateFinalText(true);
     const out = document.getElementById('outputText');
     if(out) out.innerText = displayText;
@@ -175,7 +166,6 @@ function step(id, val) {
 }
 
 async function copyToClipboard() {
-    // コピー時は環境判定に基づいた改行コードを使用
     const text = generateFinalText(false);
     if (!text) return;
     try {
