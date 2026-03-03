@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.8";
+const APP_VERSION = "6.4.9";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -87,37 +87,42 @@ function updateOutput() {
     const heavyPadding = isPaddingEnabled ? "　".repeat(zenCount) : "";
 
     let lines = [];
-    let currentLineIdx = 1;
+    let currentRowNum = 1;
 
-    const pushRawLine = (text) => {
+    // 行追加用の純粋な関数
+    const addLine = (text) => {
         if (!text) return;
-        const cleanText = text.trim();
-        if (cleanText === "") return;
+        const trimmed = text.trim();
+        if (trimmed === "") return;
 
-        const pad = (isPaddingEnabled && currentLineIdx >= startRowSetting) ? heavyPadding : "";
-        lines.push(cleanText + pad);
-        currentLineIdx++;
+        const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
+        lines.push(trimmed + pad);
+        currentRowNum++;
     };
 
-    // --- 出力構成 ---
-    pushRawLine(title);
+    // 1. タイトル
+    addLine(title);
     
+    // 2. 日数行
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
-    pushRawLine("日数" + sep + hNums.join(sep));
+    addLine("日数" + sep + hNums.join(sep));
     
-    // データ行（行商を含め、JSONの並び順通りに表示）
+    // 3. データ行（行商含む）
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
+        // 有効なデータ（－以外）がある場合のみ
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
-            pushRawLine(k + sep + dStr.split('').join(sep));
+            addLine(k + sep + dStr.split('').join(sep));
         }
     });
 
-    if(b.id === "a") pushRawLine("※7日は6日の続き(半日)");
+    // 4. 注釈
+    if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    // フィルタリングして空要素を除去し、結合
-    document.getElementById('outputText').innerText = lines.filter(l => l && l.trim().length > 0).join('\n');
+    // 最終結合：空要素を完全に除外し、余計な改行コードの発生を抑止
+    const finalResult = lines.filter(line => line.length > 0).join('\n');
+    document.getElementById('outputText').innerText = finalResult;
 }
 
 function step(id, val) {
@@ -128,6 +133,7 @@ function step(id, val) {
 
 function copyToClipboard() {
     const text = document.getElementById('outputText').innerText;
+    if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
         const s = document.getElementById('toast');
         s.style.display = 'block';
