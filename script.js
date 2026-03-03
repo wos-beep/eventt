@@ -1,46 +1,32 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.2
+ * @version 5.9.3
  * @updated 2026-03-03
- * @description 行末スペース増量による改行制御 + 8日以上半角|区切り + 大判定修正
+ * @description 不可視文字(\u2800)による強制改行制御、8日以上半角|、大判定修正済み
  */
-const APP_VERSION = "5.9.2";
-console.log(`%c 📋 Event Task Merger v${APP_VERSION} 起動中... `, "background: #ff4081; color: #fff; font-weight: bold;");
+const APP_VERSION = "5.9.3";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
-// JSONデータの読み込み
-fetch('event.json')
-    .then(response => response.json())
-    .then(data => {
-        rawData = data;
-        initApp();
-    })
-    .catch(err => console.error("JSON読み込み失敗:", err));
+fetch('event.json').then(res => res.json()).then(data => {
+    rawData = data;
+    initApp();
+});
 
 function initApp() {
     const bSel = document.getElementById('baseEvent');
     const oSel = document.getElementById('overlayEvent');
-    
-    // プルダウンの初期化
     rawData.forEach(e => {
         bSel.add(new Option(e.name, e.id));
         oSel.add(new Option(e.name, e.id));
     });
-
-    // イベントリスナーの登録
     ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', updateOutput);
+        document.getElementById(id).addEventListener('change', updateOutput);
     });
-    
     updateOutput();
 }
 
-/**
- * 各イベント固有の識別文字（軍・士・季など）を返す
- */
 function getEventChar(eventId, dayIndex) {
     if (eventId === "s") return "季"; 
     if (eventId === "a" || eventId === "o") {
@@ -54,7 +40,6 @@ function getEventChar(eventId, dayIndex) {
 
 function updateOutput() {
     if (!rawData.length) return;
-    
     const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
     const oId = document.getElementById('overlayEvent').value;
     const o = oId ? rawData.find(x => x.id === oId) : null;
@@ -65,29 +50,22 @@ function updateOutput() {
     let totalMax = b.days;
     let title = b.name;
 
-    // --- データ合成ロジック ---
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
         const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
-
         allKeys.forEach(k => {
             let row = "";
             for (let d = 0; d < totalMax; d++) {
                 const bV = (b.data[k] || "")[d] || "－";
                 const oV = (o.data[k] || "")[d - shift] || "－";
-                
-                if (bV !== "－" && oV !== "－") {
-                    row += "◎"; 
-                } else if (bV !== "－") {
-                    // 同盟大作戦(a)がベースなら、ベース由来は「大」
+                if (bV !== "－" && oV !== "－") row += "◎"; 
+                else if (bV !== "－") {
                     row += (b.id === "a" && (bV === "◯" || bV === "△")) ? "大" : 
                            (bV === "◯" || bV === "△") ? getEventChar(b.id, d) : bV;
                 } else if (oV !== "－") {
                     row += (oV === "◯" || oV === "△") ? getEventChar(o.id, d - shift) : oV;
-                } else {
-                    row += "－";
-                }
+                } else row += "－";
             }
             combined[k] = row;
         });
@@ -95,54 +73,38 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成ロジック ---
     const isSlim = totalMax >= 8;
-    const sep = isSlim ? "|" : "｜"; // 8日以上は半角パイプ、以内は全角
-    const headGap = " "; // 項目名とデータの間の隙間(半角)
-    // 各行の末尾に半角スペースを10個付与（システムに強制改行させるための「壁」）
-    const rowSuffix = "          "; 
+    const sep = isSlim ? "|" : "｜"; 
+    const headGap = " "; 
+    // 不可視文字 \u2800 (Braille Blank) を5個並べ、確実に「文字」として認識させます
+    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800"; 
 
     let res = title + "\n";
     if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
     
-    // 日数ヘッダー
     res += "日数" + headGap + sep;
-    let headerNums = [];
-    for(let i = rStart; i <= totalMax; i++) {
-        headerNums.push(i >= 10 ? i : fullDigits[i]);
-    }
-    res += headerNums.join(sep) + rowSuffix + "\n";
-    
-    // データ行
+    let h = [];
+    for(let i = rStart; i <= totalMax; i++) h.push(i >= 10 ? i : fullDigits[i]);
+    res += h.join(sep) + rowSuffix + "\n";
+
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
-        let dataStr = combined[k].substring(rStart - 1, totalMax);
-        if (dataStr.replace(/－/g, '').length) {
-            // 項目名 + 半角空き + 先頭区切り + データのセパレータ結合 + 行末スペース10個
-            const formattedData = dataStr.split('').join(sep);
-            res += k + headGap + sep + formattedData + rowSuffix + "\n";
+        let dStr = combined[k].substring(rStart - 1, totalMax);
+        if (dStr.replace(/－/g, '').length) {
+            res += k + headGap + sep + dStr.split('').join(sep) + rowSuffix + "\n";
         }
     });
 
     if(b.id === "a") res += "※7日は6日の続き(半日)" + rowSuffix;
-    
     document.getElementById('outputText').innerText = res.trim();
 }
 
-/**
- * UI操作：数値ステップ変更
- */
 function step(id, val) {
     const el = document.getElementById(id);
-    if (el) {
-        el.value = Math.max(0, parseInt(el.value) + val);
-        updateOutput();
-    }
+    el.value = Math.max(0, parseInt(el.value) + val);
+    updateOutput();
 }
 
-/**
- * クリップボードへのコピー
- */
 function copyToClipboard() {
     const text = document.getElementById('outputText').innerText;
     navigator.clipboard.writeText(text).then(() => {
