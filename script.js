@@ -1,4 +1,4 @@
-const APP_VERSION = "6.1.0";
+const APP_VERSION = "6.2.0";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -15,11 +15,9 @@ function initApp() {
         oSel.add(new Option(e.name, e.id));
     });
 
-    // すべての入力項目にイベントリスナーを設定
     const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'invPadding'];
     inputs.forEach(id => {
         document.getElementById(id).addEventListener('input', () => {
-            // スライダーの値を横の数字に反映
             if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById(id).value;
             if(id === 'invPadding') document.getElementById('invVal').innerText = document.getElementById(id).value;
             updateOutput();
@@ -45,11 +43,9 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    // デバッグ用パネルの値を取得
     const startRow = parseInt(document.getElementById('startRow').value) || 11;
     const zenCount = parseInt(document.getElementById('zenPadding').value) || 0;
     const invCount = parseInt(document.getElementById('invPadding').value) || 0;
-    const heavyPadding = "　".repeat(zenCount) + "\u2800".repeat(invCount);
 
     let combined = {};
     let totalMax = b.days;
@@ -78,15 +74,25 @@ function updateOutput() {
         combined = b.data;
     }
 
+    // --- レイアウト構成 (v6.2.0) ---
+    // 10日以上の場合は物理的な限界を超えるため、セパレーターを抜く
+    const isOverLimit = totalMax >= 10;
     const isSlim = totalMax >= 8;
-    const sep = isSlim ? "|" : "｜"; 
+    const sep = isOverLimit ? "" : (isSlim ? "|" : "｜"); 
+    
+    // 10日以上の時は自爆防止のためパディングを自動で0にする
+    const heavyPadding = isOverLimit ? "" : ("　".repeat(zenCount) + "\u2800".repeat(invCount));
 
     let lines = [];
     lines.push(title);
     if(b.id === "a") lines.push("商:毎日◎(SSR出せば100k~)");
     
     let hNums = [];
-    for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
+    for(let i = rStart; i <= totalMax; i++) {
+        // 10日以上の時は数字も半角に統一
+        let n = (isOverLimit || i >= 10) ? i : fullDigits[i];
+        hNums.push(n);
+    }
     lines.push("日数" + sep + hNums.join(sep));
     
     Object.keys(combined).forEach(k => {
@@ -100,12 +106,8 @@ function updateOutput() {
 
     let finalOutput = "";
     lines.forEach((line, index) => {
-        // デバッグ設定に基づき、指定行以降にのみパディングを付与
-        if (index + 1 >= startRow) {
-            finalOutput += line + heavyPadding + "\n";
-        } else {
-            finalOutput += line + "\n";
-        }
+        const currentPad = (index + 1 >= startRow) ? heavyPadding : "";
+        finalOutput += line + currentPad + "\n";
     });
 
     document.getElementById('outputText').innerText = finalOutput.trim();
