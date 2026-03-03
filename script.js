@@ -16,15 +16,31 @@ function initApp() {
         bSel.add(new Option(e.name, e.id));
         oSel.add(new Option(e.name, e.id));
     });
-    bSel.addEventListener('change', updateOutput);
-    oSel.addEventListener('change', updateOutput);
+    // 変更時に自動更新
+    [bSel, oSel, document.getElementById('overlayShift'), document.getElementById('rangeStart')].forEach(el => {
+        el.addEventListener('change', updateOutput);
+    });
     updateOutput();
+}
+
+// イベントごとの識別文字を判定するロジック
+function getEventChar(eventId, dayIndex) {
+    if (eventId === "s") return "季"; // 季節イベント
+    if (eventId === "a" || eventId === "o") { // 軍備・士官系
+        const day = dayIndex + 1;
+        if (day === 1 || day === 2 || day === 5 || day === 6) return "軍";
+        if (day === 3 || day === 4 || day === 7 || day === 8) return "士";
+    }
+    if (eventId === "k") return "王"; // 最強王国
+    if (eventId === "i") return "支配"; // 氷原支配者（必要なら1文字に調整）
+    return "◯"; 
 }
 
 function updateOutput() {
     if (!rawData.length) return;
     const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
     const oId = document.getElementById('overlayEvent').value;
+    const o = oId ? rawData.find(x => x.id === oId) : null;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
@@ -32,37 +48,52 @@ function updateOutput() {
     let totalMax = b.days;
     let title = b.name;
 
-    if (oId) {
-        const o = rawData.find(x => x.id === oId);
+    if (o) {
         totalMax = Math.max(b.days, o.days + shift);
-        title = `${b.name.substring(0,2)}+${o.name.substring(0,2)}`;
-        new Set([...Object.keys(b.data), ...Object.keys(o.data)]).forEach(k => {
+        title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
+        const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
+
+        allKeys.forEach(k => {
             let row = "";
             for (let d = 0; d < totalMax; d++) {
-                const bV = (b.data[k] || "")[d] || "－";
-                const oV = (o.data[k] || "")[d - shift] || "－";
-                row += (bV !== "－" && oV !== "－") ? "◎" : (bV !== "－" ? bV : oV);
+                const bVal = (b.data[k] || "")[d] || "－";
+                const oVal = (o.data[k] || "")[d - shift] || "－";
+                
+                // 重複時は ◎
+                if (bVal !== "－" && oVal !== "－") {
+                    row += "◎";
+                } else if (bVal !== "－") {
+                    // ベース側の文字変換
+                    row += (bVal === "◯" || bVal === "△") ? getEventChar(b.id, d) : bVal;
+                } else if (oVal !== "－") {
+                    // 重ね合わせ側の文字変換（ズレを考慮した日数を渡す）
+                    row += (oVal === "◯" || oVal === "△") ? getEventChar(o.id, d - shift) : oVal;
+                } else {
+                    row += "－";
+                }
             }
             combined[k] = row;
         });
-    } else { 
-        combined = b.data; 
-        totalMax = b.days; 
+    } else {
+        combined = b.data;
+        totalMax = b.days;
     }
 
+    // --- 整形出力 ---
     const displayDays = totalMax - rStart + 1;
     let res = title + "\n";
     if(b.id === "a") res += "行商は毎日◎(SSRのみ出せば毎日100k~120k貰える)\n";
     
-    res += "日数　" + Array.from({length: displayDays}, (_, i) => {
-        let n = i + rStart;
-        return n.toString().split('').map(d => fullDigits[d] || d).join('');
-    }).join('　') + "\n";
+    res += "日数　" + Array.from({length: totalMax}, (_, i) => i + 1)
+        .slice(rStart - 1)
+        .map(n => n.toString().split('').map(d => fullDigits[d] || d).join(''))
+        .join('　') + "\n";
     
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
-        let dataPart = combined[k].substring(rStart - 1, totalMax).split('').join('｜');
-        res += k + "　" + dataPart + "\n";
+        let dataStr = combined[k].substring(rStart - 1, totalMax);
+        if (!dataStr.replace(/－/g, '').length) return;
+        res += k + "　" + dataStr.split('').join('｜') + "\n";
     });
 
     if(b.id === "a") res += "※7日目は6日目の続き。半日のみ";
