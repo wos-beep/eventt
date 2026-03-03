@@ -1,6 +1,6 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.0
+ * @version 5.9.1
  * @updated 2026-03-03
  * @description 8日以上半角|区切り、各行末尾半角スペース制御(ラップ対策)、大判定修正
  */
