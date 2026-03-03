@@ -4,7 +4,7 @@
  * @updated 2026-03-03
  * @description 8日以上半角|区切り、各行末尾半角スペース制御(ラップ対策)、大判定修正
  */
-const APP_VERSION = "5.9.0";
+const APP_VERSION = "5.9.1";
 console.log(`%c 📋 Event Task Merger v${APP_VERSION} 起動中... `, "background: #ff4081; color: #fff; font-weight: bold;");
 
 let rawData = [];
@@ -109,14 +109,15 @@ function updateOutput() {
         headerNums.push(i >= 10 ? i : fullDigits[i]);
     }
     res += headerNums.join(sep) + rowSuffix + "\n";
-    
+
     // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dataStr = combined[k].substring(rStart - 1, totalMax);
         if (dataStr.replace(/－/g, '').length) {
-            // 項目名(k) + 半角空き + データ(セパレータ結合) + 行末半角空き
-            res += k + headGap + dataStr.split('').join(sep) + rowSuffix + "\n";
+            // 文字の配列を sep (|) で結合し、さらに先頭にも sep を置く
+            const formattedData = dataStr.split('').join(sep);
+            res += k + headGap + sep + formattedData + rowSuffix + "\n";
         }
     });
 
