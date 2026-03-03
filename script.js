@@ -1,4 +1,4 @@
-const APP_VERSION = "6.3.0";
+const APP_VERSION = "6.4.0";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -10,6 +10,8 @@ fetch('event.json').then(res => res.json()).then(data => {
 function initApp() {
     const bSel = document.getElementById('baseEvent');
     const oSel = document.getElementById('overlayEvent');
+    
+    // 初回リスト構築
     rawData.forEach(e => {
         bSel.add(new Option(e.name, e.id));
         oSel.add(new Option(e.name, e.id));
@@ -17,12 +19,36 @@ function initApp() {
 
     const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding'];
     inputs.forEach(id => {
-        document.getElementById(id).addEventListener('input', () => {
+        document.getElementById(id).addEventListener('input', (e) => {
             if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById(id).value;
+            
+            // ベースが変わったら「重ねる側」の重複を排除
+            if(id === 'baseEvent') filterOverlayOptions();
+            
             updateOutput();
         });
     });
+    
+    filterOverlayOptions();
     updateOutput();
+}
+
+/**
+ * ベースで選択されたイベントを重ねる側の選択肢から隠す
+ */
+function filterOverlayOptions() {
+    const bValue = document.getElementById('baseEvent').value;
+    const oSel = document.getElementById('overlayEvent');
+    
+    Array.from(oSel.options).forEach(opt => {
+        if (!opt.value) return; // 「なし」は常に表示
+        if (opt.value === bValue) {
+            opt.style.display = 'none';
+            if (oSel.value === bValue) oSel.value = ""; // 重複してたら解除
+        } else {
+            opt.style.display = 'block';
+        }
+    });
 }
 
 function getEventChar(eventId, dayIndex) {
@@ -42,7 +68,6 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    // 手動設定値
     const startRow = parseInt(document.getElementById('startRow').value) || 11;
     const manualZen = parseInt(document.getElementById('zenPadding').value) || 0;
 
@@ -50,7 +75,6 @@ function updateOutput() {
     let totalMax = b.days;
     let title = b.name;
 
-    // データ統合
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
@@ -74,11 +98,10 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- 自動レイアウト・黄金比ロジック ---
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
     
-    // 【黄金比】10日以上なら (14 - 日数) 個の全角スペース、未満ならデバッグ設定に従う
+    // 【黄金比】検証結果に基づく自動パディング
     let autoZenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
     const heavyPadding = "　".repeat(autoZenCount);
 
@@ -104,7 +127,6 @@ function updateOutput() {
 
     let finalOutput = "";
     lines.forEach((line, index) => {
-        // 11行目以降にパディングを付与
         const currentPad = (index + 1 >= startRow) ? heavyPadding : "";
         finalOutput += line + currentPad + "\n";
     });
