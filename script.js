@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.0";
+const APP_VERSION = "6.4.2";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -10,41 +10,30 @@ fetch('event.json').then(res => res.json()).then(data => {
 function initApp() {
     const bSel = document.getElementById('baseEvent');
     const oSel = document.getElementById('overlayEvent');
-    
-    // 初回リスト構築
     rawData.forEach(e => {
         bSel.add(new Option(e.name, e.id));
         oSel.add(new Option(e.name, e.id));
     });
-
     const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding'];
     inputs.forEach(id => {
-        document.getElementById(id).addEventListener('input', (e) => {
+        document.getElementById(id).addEventListener('input', () => {
             if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById(id).value;
-            
-            // ベースが変わったら「重ねる側」の重複を排除
             if(id === 'baseEvent') filterOverlayOptions();
-            
             updateOutput();
         });
     });
-    
     filterOverlayOptions();
     updateOutput();
 }
 
-/**
- * ベースで選択されたイベントを重ねる側の選択肢から隠す
- */
 function filterOverlayOptions() {
     const bValue = document.getElementById('baseEvent').value;
     const oSel = document.getElementById('overlayEvent');
-    
     Array.from(oSel.options).forEach(opt => {
-        if (!opt.value) return; // 「なし」は常に表示
+        if (!opt.value) return;
         if (opt.value === bValue) {
             opt.style.display = 'none';
-            if (oSel.value === bValue) oSel.value = ""; // 重複してたら解除
+            if (oSel.value === bValue) oSel.value = "";
         } else {
             opt.style.display = 'block';
         }
@@ -68,7 +57,7 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    const startRow = parseInt(document.getElementById('startRow').value) || 11;
+    const startRow = parseInt(document.getElementById('startRow').value) || 1;
     const manualZen = parseInt(document.getElementById('zenPadding').value) || 0;
 
     let combined = {};
@@ -94,44 +83,40 @@ function updateOutput() {
             }
             combined[k] = row;
         });
-    } else {
-        combined = b.data;
-    }
+    } else { combined = b.data; }
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
     
-    // 【黄金比】検証結果に基づく自動パディング
-    let autoZenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
-    const heavyPadding = "　".repeat(autoZenCount);
+    let zenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
+    const heavyPadding = "　".repeat(zenCount);
 
     let lines = [];
-    lines.push(title);
-    if(b.id === "a") lines.push("行商:毎日◎(SSR出せば100k~)");
+    let rowIdx = 1;
+    const addLine = (content) => {
+        const pad = (rowIdx >= startRow) ? heavyPadding : "";
+        lines.push(content + pad);
+        rowIdx++;
+    };
+
+    addLine(title);
+    if(b.id === "a") addLine("行商:毎日◎(SSR出せば100k~)");
     
     let hNums = [];
-    for(let i = rStart; i <= totalMax; i++) {
-        let n = (isOverLimit || i >= 10) ? i : fullDigits[i];
-        hNums.push(n);
-    }
-    lines.push("日数" + sep + hNums.join(sep));
+    for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
+    addLine("日数" + sep + hNums.join(sep));
     
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
         if (dStr.replace(/－/g, '').length) {
-            lines.push(k + sep + dStr.split('').join(sep));
+            addLine(k + sep + dStr.split('').join(sep));
         }
     });
-    if(b.id === "a") lines.push("※7日は6日の続き(半日)");
 
-    let finalOutput = "";
-    lines.forEach((line, index) => {
-        const currentPad = (index + 1 >= startRow) ? heavyPadding : "";
-        finalOutput += line + currentPad + "\n";
-    });
+    if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    document.getElementById('outputText').innerText = finalOutput.trim();
+    document.getElementById('outputText').innerText = lines.join('\n');
 }
 
 function step(id, val) {
