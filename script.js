@@ -1,13 +1,11 @@
-const APP_VERSION = "6.6.3";
+const APP_VERSION = "6.6.4";
 let rawData = [];
-// 日数表示用の配列
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
-// イベントごとの識別文字定義（検閲回避のため全角漢字へ）
 const eventChars = {
-    "a": "同", // 同盟大作戦（大→同へ変更）
-    "s": "季", // 季節
-    "o": "士"  // 士官計画
+    "a": "同", 
+    "s": "季", 
+    "o": "士"  
 };
 
 fetch('event.json').then(res => res.json()).then(data => {
@@ -17,20 +15,14 @@ fetch('event.json').then(res => res.json()).then(data => {
     updateOutput();
 }).catch(err => console.error("Data Load Error:", err));
 
-// --- ユーティリティ関数 ---
-
-// 日数表示の黄金比（1-9は全角、10-は半角2文字）
 function getAlignedDayNum(i) {
     if (i <= 9) return fullDigits[i];
-    return i.toString(); // 10以降は半角2文字
+    return i.toString(); 
 }
 
-// OS判定（Windowsのみ特殊改行を使用するため）
 function isWindows() {
     return navigator.platform.indexOf('Win') > -1;
 }
-
-// --- メインロジック ---
 
 function displayVersion() {
     try {
@@ -79,12 +71,9 @@ function filterOverlayOptions() {
     });
 }
 
-// イベント文字取得（アライン崩れ防止のため全角文字へ）
 function getEventChar(eventId, dayIndex) {
     const char = eventChars[eventId];
-    if (char) return char;
-    // 割り当てがない場合は◯（スパム検閲回避のため連続に注意）
-    return "◯";
+    return char || "◯";
 }
 
 function generateFinalText() {
@@ -114,7 +103,6 @@ function generateFinalText() {
                 const oV = (o.data[k] || "")[d - shift] || "－";
                 if (bV !== "－" && oV !== "－") row += "◎"; 
                 else if (bV !== "－") {
-                    // ダイヤ行などで「◯」が連続しないよう、イベント文字を優先
                     row += (bV === "◯" || bV === "△") ? getEventChar(b.id, d) : bV;
                 } else if (oV !== "－") {
                     row += (oV === "◯" || oV === "△") ? getEventChar(o.id, d - shift) : oV;
@@ -124,7 +112,6 @@ function generateFinalText() {
         });
     } else { 
         combined = JSON.parse(JSON.stringify(b.data)); 
-        // 単体表示の時も、◯を適切なイベント文字に変換
         if (eventChars[b.id]) {
             Object.keys(combined).forEach(k => {
                 let newRow = "";
@@ -137,69 +124,60 @@ function generateFinalText() {
         }
     }
 
-    // --- セパレータとパディングの決定（v6.6.3 統合版） ---
-    let sep = "｜"; // デフォルト全角
-    let finalStartRow = 11; // デフォルト11行目（タイトル＋日数行を除く）
+    // --- 【重要】表示日数に基づく自動調整ロジック (v6.6.4) ---
+    const displayedDays = totalMax - rStart + 1; 
+    let sep = "｜"; 
     let finalZenCount = 0;
+    let finalStartRow = 11;
 
-    // ロジック1：セパレータの廃止（9日以上は一律なし）
-    if (totalMax >= 9) {
-        sep = ""; // トータル幅節約のためセパレータを廃止
+    // 1. セパレータの判定
+    if (displayedDays >= 9) {
+        sep = ""; 
     }
 
-    // ロジック2：自動パディング（壁）の黄金比
+    // 2. パディングの判定
     if (isManualEnabled) {
-        // 手動モードON：ユーザー指定値を採用
         finalStartRow = parseInt(document.getElementById('startRow')?.value || 1);
         finalZenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
     } else {
-        // 手動モードOFF：日数に応じた自動判定
-        if (totalMax <= 6) {
-            finalZenCount = 2; // 6日以下:2
-        } else if (totalMax >= 9 && totalMax <= 13) {
-            // 9日以上:14-日数の法則（セパレータなしで幅を稼ぐ前提）
-            finalZenCount = 14 - totalMax; // 10日なら壁4個
+        if (displayedDays <= 6) {
+            finalZenCount = 2;
+        } else if (displayedDays >= 9 && displayedDays <= 13) {
+            finalZenCount = 14 - displayedDays; 
         } else {
-            finalZenCount = 0; // 7, 8日 および 14日以上
+            finalZenCount = 0; 
         }
     }
 
     const heavyPadding = finalZenCount > 0 ? "　".repeat(finalZenCount) : "";
     let lines = [];
-    let currentLineCount = 1; // 1行目からカウント
+    let currentLineCount = 1;
 
     const addLine = (text) => {
         const base = text.toString().trim();
         if (base === "") return;
-        // 現在の行数が「パディング開始行」以降であれば全角スペースを付与
         const pad = (currentLineCount >= finalStartRow) ? heavyPadding : "";
         lines.push(base + pad);
         currentLineCount++;
     };
 
-    // 1行目：タイトル
     addLine(title);
     
-    // 2行目：日数行（デグレを修正。黄金比アライン）
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) {
-        hNums.push(getAlignedDayNum(i)); // 1-9は全角、10-は半角2文字
+        hNums.push(getAlignedDayNum(i));
     }
-    // セパレータが「なし」の場合は、日数行も詰めて出力
     addLine("日数" + sep + hNums.join(sep));
     
-    // 3行目以降：各項目
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
-            // 文字列を配列に分割してjoinすることで、セパレータ（ sep が "" ならなし）を挟む
             addLine(k + sep + dStr.split('').join(sep));
         }
     });
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    // Windows向けのみ改行コードを変更（分岐を戻す）
     const lineBreak = isWindows() ? '\r\n' : '\n';
     return lines.join(lineBreak);
 }
