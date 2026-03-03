@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.1
+ * @version 5.9.2
  * @updated 2026-03-03
- * @description 8日以上半角|区切り、各行末尾半角スペース制御(ラップ対策)、大判定修正
+ * @description 行末スペース増量による改行制御 + 8日以上半角|区切り + 大判定修正
  */
-const APP_VERSION = "5.9.1";
+const APP_VERSION = "5.9.2";
 console.log(`%c 📋 Event Task Merger v${APP_VERSION} 起動中... `, "background: #ff4081; color: #fff; font-weight: bold;");
 
 let rawData = [];
@@ -23,26 +23,28 @@ function initApp() {
     const bSel = document.getElementById('baseEvent');
     const oSel = document.getElementById('overlayEvent');
     
+    // プルダウンの初期化
     rawData.forEach(e => {
         bSel.add(new Option(e.name, e.id));
         oSel.add(new Option(e.name, e.id));
     });
 
+    // イベントリスナーの登録
     ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart'].forEach(id => {
-        document.getElementById(id).addEventListener('change', updateOutput);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateOutput);
     });
     
     updateOutput();
 }
 
 /**
- * 各イベント固有の識別文字を返す
+ * 各イベント固有の識別文字（軍・士・季など）を返す
  */
 function getEventChar(eventId, dayIndex) {
     if (eventId === "s") return "季"; 
     if (eventId === "a" || eventId === "o") {
         const d = dayIndex + 1;
-        // 軍備・士官の周期判定
         return (d === 1 || d === 2 || d === 5 || d === 6) ? "軍" : "士";
     }
     if (eventId === "k") return "準"; 
@@ -63,7 +65,7 @@ function updateOutput() {
     let totalMax = b.days;
     let title = b.name;
 
-    // マージロジック
+    // --- データ合成ロジック ---
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
@@ -78,7 +80,7 @@ function updateOutput() {
                 if (bV !== "－" && oV !== "－") {
                     row += "◎"; 
                 } else if (bV !== "－") {
-                    // 同盟大作戦(a)がベースなら、ベースのみの日は必ず「大」
+                    // 同盟大作戦(a)がベースなら、ベース由来は「大」
                     row += (b.id === "a" && (bV === "◯" || bV === "△")) ? "大" : 
                            (bV === "◯" || bV === "△") ? getEventChar(b.id, d) : bV;
                 } else if (oV !== "－") {
@@ -93,29 +95,30 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成 ---
+    // --- レイアウト構成ロジック ---
     const isSlim = totalMax >= 8;
-    const sep = isSlim ? "|" : "｜"; // 8日以上は半角パイプ
+    const sep = isSlim ? "|" : "｜"; // 8日以上は半角パイプ、以内は全角
     const headGap = " "; // 項目名とデータの間の隙間(半角)
-    const rowSuffix = " "; // アプローチ②：ワードラップを誘発する行末半角スペース
+    // 各行の末尾に半角スペースを10個付与（システムに強制改行させるための「壁」）
+    const rowSuffix = "          "; 
 
     let res = title + "\n";
     if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
     
     // 日数ヘッダー
-    res += "日数" + headGap;
+    res += "日数" + headGap + sep;
     let headerNums = [];
     for(let i = rStart; i <= totalMax; i++) {
         headerNums.push(i >= 10 ? i : fullDigits[i]);
     }
     res += headerNums.join(sep) + rowSuffix + "\n";
-
+    
     // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dataStr = combined[k].substring(rStart - 1, totalMax);
         if (dataStr.replace(/－/g, '').length) {
-            // 文字の配列を sep (|) で結合し、さらに先頭にも sep を置く
+            // 項目名 + 半角空き + 先頭区切り + データのセパレータ結合 + 行末スペース10個
             const formattedData = dataStr.split('').join(sep);
             res += k + headGap + sep + formattedData + rowSuffix + "\n";
         }
@@ -126,17 +129,27 @@ function updateOutput() {
     document.getElementById('outputText').innerText = res.trim();
 }
 
-// ボタン等のイベント関数
+/**
+ * UI操作：数値ステップ変更
+ */
 function step(id, val) {
     const el = document.getElementById(id);
-    el.value = Math.max(0, parseInt(el.value) + val);
-    updateOutput();
+    if (el) {
+        el.value = Math.max(0, parseInt(el.value) + val);
+        updateOutput();
+    }
 }
 
+/**
+ * クリップボードへのコピー
+ */
 function copyToClipboard() {
-    navigator.clipboard.writeText(document.getElementById('outputText').innerText).then(() => {
+    const text = document.getElementById('outputText').innerText;
+    navigator.clipboard.writeText(text).then(() => {
         const s = document.getElementById('toast');
-        s.style.display = 'block';
-        setTimeout(() => s.style.display = 'none', 1500);
+        if (s) {
+            s.style.display = 'block';
+            setTimeout(() => s.style.display = 'none', 1500);
+        }
     });
 }
