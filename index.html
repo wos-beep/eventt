@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v3.5</title>
+    <title>Event Task Merger v3.6</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
         .container { max-width: 480px; margin: auto; }
@@ -13,45 +13,50 @@
         .control-row { margin-bottom: 12px; }
         label { font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 6px; }
         select { width: 100%; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 8px; font-size: 0.95rem; outline: none; }
-        .stepper-container { display: flex; gap: 10px; }
+        .stepper-container { display: flex; gap: 10px; margin-bottom: 15px; }
         .stepper-item { flex: 1; }
         .stepper { display: flex; align-items: center; background: #2d2d2d; border-radius: 8px; border: 1px solid #444; overflow: hidden; }
-        .stepper button { flex: 1; height: 48px; background: #3d3d3d; color: #fff; border: none; font-size: 1.4rem; cursor: pointer; }
-        .stepper input { width: 50px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1.2rem; font-weight: bold; pointer-events: none; }
+        .stepper button { flex: 1; height: 44px; background: #3d3d3d; color: #fff; border: none; font-size: 1.2rem; cursor: pointer; }
+        .stepper input { width: 45px; text-align: center; background: transparent; color: #fff; border: none; font-size: 1rem; font-weight: bold; pointer-events: none; }
         
-        /* チャット画面の幅をシミュレート (全角12文字分) */
+        /* スライダーのスタイル */
+        .slider-row { background: #2d2d2d; padding: 10px; border-radius: 8px; border: 1px solid #444; }
+        input[type="range"] { width: 100%; margin-top: 8px; cursor: pointer; accent-color: #bb86fc; }
+        .slider-val { float: right; color: #03dac6; font-weight: bold; }
+
+        /* プレビュー枠：スライダーと連動して width が変わる */
         pre { 
-            background: #2d2d2d; 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 1rem; /* スマホで見やすいサイズ */
-            color: #fff; 
-            border: 1px solid #444; 
-            margin: 0; 
-            line-height: 1.2; 
-            font-family: monospace;
-            white-space: pre-wrap; 
-            word-break: break-all;
-            width: 12em; /* 全角12文字幅に固定 */
+            background: #2d2d2d; padding: 12px; border-radius: 8px; 
+            font-size: 1rem; color: #fff; border: 1px solid #444; 
+            margin: 0; line-height: 1.3; font-family: monospace;
+            white-space: pre-wrap; word-break: break-all;
             box-sizing: content-box;
+            transition: width 0.1s ease; /* 動きを滑らかに */
         }
         .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 タスク統合 v3.5</h1></header>
+    <header><h1>📋 タスク統合 v3.6</h1></header>
     <div class="card">
-        <div class="control-row"><label>イベント選択</label><select id="baseEvent" onchange="updateOutput()"></select></div>
+        <div class="control-row"><label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select></div>
         <div class="control-row"><label>重ね合わせ</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select></div>
+        
         <div class="stepper-container">
             <div class="stepper-item"><label>重ねズレ</label><div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div></div>
-            <div class="stepper-item"><label>表示開始日</label><div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div></div>
+            <div class="stepper-item"><label>開始日</label><div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div></div>
+        </div>
+
+        <div class="control-row slider-row">
+            <label>1行の長さ（全角文字数） <span class="slider-val" id="lineWidthVal">11.5</span></label>
+            <input type="range" id="lineWidth" min="10" max="15" step="0.1" value="11.5" oninput="updateOutput()">
         </div>
     </div>
+
     <div id="outputArea" class="card" style="display:none;">
-        <label>プレビュー（この通りにコピーされます）</label>
+        <label>プレビュー（枠内で折れるように調整）</label>
         <pre id="outputText"></pre>
         <button class="copy-btn" onclick="copyToClipboard()">内容をコピー</button>
     </div>
@@ -93,7 +98,12 @@ function updateOutput() {
     const oId = oSel.value;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
+    const targetW = parseFloat(document.getElementById('lineWidth').value);
     
+    // スライダーの値とプレビュー幅を同期
+    document.getElementById('lineWidthVal').innerText = targetW.toFixed(1);
+    document.getElementById('outputText').style.width = targetW + "em";
+
     let combined = {};
     let totalMax = b.days;
     let title = b.name;
@@ -116,7 +126,7 @@ function updateOutput() {
     const displayDays = totalMax - rStart + 1;
     let headerStr = "日目|" + Array.from({length: displayDays}, (_, i) => i + rStart).map(n => fullDigits[n] || n).join(' ');
     
-    // ヘッダーを12文字幅に調整 (日目(2)+|(0.5)+数字列)
+    // ヘッダー処理
     let resultText = title + "\n" + headerStr + "\n";
     
     let keys = Object.keys(combined);
@@ -124,15 +134,12 @@ function updateOutput() {
         let dataStr = combined[k].substring(rStart - 1, totalMax).split('').join(' ');
         let line = `${padName(k)}|${dataStr}`;
         
-        // 全角12文字幅(24半角幅)に足りない分を全角スペースで埋める
+        // 指定された幅に足りない分を全角スペースで埋める
         let currentW = getWidth(line);
-        let targetW = 11.5; // ゲーム画面の折り返し地点(微調整用)
-        
-        while(currentW < targetW) {
+        while(currentW < targetW - 0.1) { // わずかな誤差を許容
             line += "　";
             currentW += 1;
         }
-        // すべて改行なしで連結。targetWの設定により自動折り返しを狙う。
         resultText += line;
     });
 
@@ -159,34 +166,7 @@ function copyToClipboard() {
 updateOutput();
 </script>
 </body>
-</html>        }
-        .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <header><h1>📋 タスク統合 v3.4</h1></header>
-    <div class="card">
-        <div class="control-row"><label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select></div>
-        <div class="control-row"><label>重ね合わせ（任意）</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select></div>
-        <div class="stepper-container">
-            <div class="stepper-item"><label>重ねズレ</label><div class="stepper"><button onclick="step('overlayShift', -1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">＋</button></div></div>
-            <div class="stepper-item"><label>表示開始日</label><div class="stepper"><button onclick="step('rangeStart', -1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">＋</button></div></div>
-        </div>
-    </div>
-    <div id="outputArea" class="card" style="display:none;">
-        <label>プレビュー（チャット再現）</label>
-        <pre id="outputText"></pre>
-        <button class="copy-btn" onclick="copyToClipboard()">内容をコピー</button>
-    </div>
-</div>
-<div id="toast" class="toast">コピーしました！</div>
-
-<script>
-const rawData = [
-    { id: "a", name: "同盟大作戦with軍備･士官", data: {"行商":"◎◎◎◎◎◎◎","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","専門":"◯◎－－－－－","訓練":"－－△◎－－－","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","宝石":"－－◯△－△△","ﾀﾞｲﾔ":"△◎△△◯△△"}, days: 7 },
-    { id: "s", name: "季節イベント", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
+</html>":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
     { id: "k", name: "最強王国準備フェーズ", data: {"宝石":"◯－◯◯－","火晶":"◯◯－－◯","加速":"◯◯－－◯","ﾙﾚｯﾄ":"－◯◯－－","欠片":"－◯◯－－","採集":"－◯－－－","専門":"－◯◯－－","ﾍﾟｯﾄ":"－－◯－◯","野獣":"－－◯－－","英装":"－－－－◯","訓練":"－－－◯－","領装":"－－－－◯"}, days: 5 },
     { id: "i", name: "氷原支配者", data: {"火晶":"◯◯－－◯－◯","加速":"◯◯－－◯－◯","宝石":"◯－◯◯－－－","ﾙﾚｯﾄ":"－◯◯－－－－","欠片":"－◯◯－－－◯","英装":"－◯－◯◯－－","専門":"－◯◯－－－－","ﾍﾟｯﾄ":"－－◯－－－◯","訓練":"－－－◯－◯－","領装":"－－－－－◯◯","採集":"－－－－－－◯"}, days: 7 },
     { id: "o", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
