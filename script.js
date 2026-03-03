@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.6
+ * @version 5.9.5
  * @updated 2026-03-03
  * @description 不可視文字(\u2800)による強制改行制御、8日以上半角|、大判定修正済み
  */
-const APP_VERSION = "5.9.6";
+const APP_VERSION = "5.9.5";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
@@ -73,33 +73,31 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成ロジック (v5.9.4: 手動成功パターンの反映) ---
+
+    // --- レイアウト構成 (v5.9.5: 壁の厚みを4個に最適化) ---
     const isSlim = totalMax >= 8;
     const sep = isSlim ? "|" : "｜"; 
     const headGap = " "; 
     
-    // 手動で成功した「不可視文字(点字用空白)11個」を正確に再現
-    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800"; 
+    // 8個だと厚すぎてデータが落下したため、4個に減らして「1行」に収まる限界を攻めます
+    const rowSuffix = "\u2800\u2800\u2800\u2800"; 
 
     let res = title + "\n";
     if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
     
     // 日数ヘッダー
     res += "日数" + headGap + sep;
-    let headerNums = [];
-    for(let i = rStart; i <= totalMax; i++) {
-        headerNums.push(i >= 10 ? i : fullDigits[i]);
-    }
-    res += headerNums.join(sep) + rowSuffix + "\n";
+    let hNums = [];
+    for(let i = rStart; i <= totalMax; i++) hNums.push(i >= 10 ? i : fullDigits[i]);
+    res += hNums.join(sep) + rowSuffix + "\n";
     
     // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
-        let dataStr = combined[k].substring(rStart - 1, totalMax);
-        if (dataStr.replace(/－/g, '').length) {
-            // 項目名 + 半角空き + | + データ(sep結合) + 不可視の壁11個
-            const formattedData = dataStr.split('').join(sep);
-            res += k + headGap + sep + formattedData + rowSuffix + "\n";
+        let dStr = combined[k].substring(rStart - 1, totalMax);
+        if (dStr.replace(/－/g, '').length) {
+            // 項目名 + 半角空き + | + データ + 4個の壁
+            res += k + headGap + sep + dStr.split('').join(sep) + rowSuffix + "\n";
         }
     });
 
