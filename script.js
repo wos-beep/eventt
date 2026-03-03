@@ -1,4 +1,4 @@
-const APP_VERSION = "6.2.1";
+const APP_VERSION = "6.3.0";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -15,11 +15,10 @@ function initApp() {
         oSel.add(new Option(e.name, e.id));
     });
 
-    const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'invPadding'];
+    const inputs = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding'];
     inputs.forEach(id => {
         document.getElementById(id).addEventListener('input', () => {
             if(id === 'zenPadding') document.getElementById('zenVal').innerText = document.getElementById(id).value;
-            if(id === 'invPadding') document.getElementById('invVal').innerText = document.getElementById(id).value;
             updateOutput();
         });
     });
@@ -43,15 +42,15 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
+    // 手動設定値
     const startRow = parseInt(document.getElementById('startRow').value) || 11;
-    const zenCount = parseInt(document.getElementById('zenPadding').value) || 0;
-    const invCount = parseInt(document.getElementById('invPadding').value) || 0;
-    const heavyPadding = "　".repeat(zenCount) + "\u2800".repeat(invCount);
+    const manualZen = parseInt(document.getElementById('zenPadding').value) || 0;
 
     let combined = {};
     let totalMax = b.days;
     let title = b.name;
 
+    // データ統合
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
@@ -75,25 +74,25 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成 (v6.2.1) ---
+    // --- 自動レイアウト・黄金比ロジック ---
     const isOverLimit = totalMax >= 10;
-    const isSlim = totalMax >= 8;
-    // 10日以上の時はセパレーターを抜く
-    const sep = isOverLimit ? "" : (isSlim ? "|" : "｜"); 
+    const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
+    
+    // 【黄金比】10日以上なら (14 - 日数) 個の全角スペース、未満ならデバッグ設定に従う
+    let autoZenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
+    const heavyPadding = "　".repeat(autoZenCount);
 
     let lines = [];
     lines.push(title);
     if(b.id === "a") lines.push("商:毎日◎(SSR出せば100k~)");
     
-    // 日数ヘッダー (10以上は半角、1-9は全角で幅を統一)
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) {
-        let n = i >= 10 ? i.toString() : fullDigits[i];
+        let n = (isOverLimit || i >= 10) ? i : fullDigits[i];
         hNums.push(n);
     }
     lines.push("日数" + sep + hNums.join(sep));
     
-    // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
@@ -105,7 +104,7 @@ function updateOutput() {
 
     let finalOutput = "";
     lines.forEach((line, index) => {
-        // 全日数パターンでデバッグパネルのパディング設定を有効にする
+        // 11行目以降にパディングを付与
         const currentPad = (index + 1 >= startRow) ? heavyPadding : "";
         finalOutput += line + currentPad + "\n";
     });
@@ -115,7 +114,7 @@ function updateOutput() {
 
 function step(id, val) {
     const el = document.getElementById(id);
-    el.value = Math.max(0, parseInt(el.value) + val);
+    el.value = Math.max(id === 'rangeStart' ? 1 : 0, parseInt(el.value) + val);
     updateOutput();
 }
 
@@ -123,9 +122,7 @@ function copyToClipboard() {
     const text = document.getElementById('outputText').innerText;
     navigator.clipboard.writeText(text).then(() => {
         const s = document.getElementById('toast');
-        if (s) {
-            s.style.display = 'block';
-            setTimeout(() => s.style.display = 'none', 1500);
-        }
+        s.style.display = 'block';
+        setTimeout(() => s.style.display = 'none', 1500);
     });
 }
