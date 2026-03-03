@@ -1,4 +1,4 @@
-const APP_VERSION = "6.5.1";
+const APP_VERSION = "6.5.3";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -44,10 +44,24 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-// 文字列生成ロジックを独立（プレビューとコピーで共通化）
-function generateFinalText() {
+// Client Hints または UserAgent から Windows 判定
+function isWindowsOS() {
+    if (navigator.userAgentData && navigator.userAgentData.platform) {
+        return navigator.userAgentData.platform === "Windows";
+    }
+    return navigator.userAgent.indexOf("Windows") !== -1;
+}
+
+function generateFinalText(targetOS = "default") {
     const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
     if (!b) return "";
+    
+    // 改行コードの切り分け
+    const isWin = (targetOS === "win" || (targetOS === "default" && isWindowsOS()));
+    const nl = isWin ? "\r\n" : "\n";
+    // Windows の場合は空行化を防ぐため行末に見えないガード（ゼロ幅スペース）を置く
+    const guard = isWin ? "\u200B" : "";
+
     const oId = document.getElementById('overlayEvent').value;
     const o = oId ? rawData.find(x => x.id === oId) : null;
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
@@ -96,7 +110,7 @@ function generateFinalText() {
         const base = text.toString().trim();
         if (base === "") return;
         const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
-        lines.push(base + pad);
+        lines.push(base + pad + guard);
         currentRowNum++;
     };
 
@@ -115,13 +129,14 @@ function generateFinalText() {
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    return lines.map(l => l.trimEnd()).filter(l => l.length > 0).join('\n');
+    return lines.join(nl);
 }
 
 function updateOutput() {
     if (!rawData.length) return;
-    const finalText = generateFinalText();
-    document.getElementById('outputText').innerText = finalText;
+    // 画面表示は常に標準改行（LF）で行う
+    const displayText = generateFinalText("unix").replace(/\u200B/g, '');
+    document.getElementById('outputText').innerText = displayText;
 }
 
 function step(id, val) {
@@ -130,19 +145,16 @@ function step(id, val) {
     updateOutput();
 }
 
-// Windows Chrome対策：隠しtextareaを用いたコピー
 function copyToClipboard() {
-    const text = generateFinalText();
+    // コピー時は環境に応じた改行コードで生成
+    const text = generateFinalText("default");
     if (!text) return;
 
     const textArea = document.createElement("textarea");
     textArea.value = text;
-    // 画面外に配置
     textArea.style.position = "fixed";
     textArea.style.left = "-9999px";
-    textArea.style.top = "0";
     document.body.appendChild(textArea);
-    
     textArea.focus();
     textArea.select();
 
@@ -154,6 +166,5 @@ function copyToClipboard() {
     } catch (err) {
         console.error('コピー失敗', err);
     }
-
     document.body.removeChild(textArea);
 }
