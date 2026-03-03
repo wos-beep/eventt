@@ -1,10 +1,10 @@
 /**
  * Event Task Merger - Logic Script
- * @version 5.9.5
+ * @version 5.9.6
  * @updated 2026-03-03
  * @description 不可視文字(\u2800)による強制改行制御、8日以上半角|、大判定修正済み
  */
-const APP_VERSION = "5.9.5";
+const APP_VERSION = "5.9.6";
 
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
@@ -79,7 +79,7 @@ function updateOutput() {
     const headGap = " "; 
     
     // 手動で成功した「不可視文字(点字用空白)11個」を正確に再現
-    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800\u2800\u2800"; 
+    const rowSuffix = "\u2800\u2800\u2800\u2800\u2800\u2800\u2800\u2800"; 
 
     let res = title + "\n";
     if(b.id === "a") res += "商:毎日◎(SSR出せば100k~)" + rowSuffix + "\n";
