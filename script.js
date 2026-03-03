@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.6";
+const APP_VERSION = "6.4.7";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -78,34 +78,40 @@ function updateOutput() {
             }
             combined[k] = row;
         });
-    } else { combined = JSON.parse(JSON.stringify(b.data)); }
+    } else { 
+        combined = JSON.parse(JSON.stringify(b.data)); 
+    }
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    const heavyPadding = (isPaddingEnabled && zenCount > 0) ? "　".repeat(zenCount) : "";
+    
+    // パディング（壁）の定義
+    // ONの時は指定数、OFFの時でも吸い込み防止に最低1文字の全角スペースを入れる
+    const heavyPadding = isPaddingEnabled ? "　".repeat(Math.max(1, zenCount)) : "　";
 
     let lines = [];
     let currentLineIdx = 1;
 
     const pushRawLine = (text) => {
-        if (!text || text.trim() === "") return; // 空文字は絶対に入れない
-        const pad = (isPaddingEnabled && currentLineIdx >= startRowSetting) ? heavyPadding : "";
+        if (!text || text.trim() === "") return;
+        // 開始行以降、またはパディングOFF時でも最低限の「壁」を付与
+        const needsPad = (isPaddingEnabled && currentLineIdx >= startRowSetting) || (!isPaddingEnabled);
+        const pad = needsPad ? heavyPadding : "";
         lines.push(text + pad);
         currentLineIdx++;
     };
 
-    // 構築
+    // --- 出力構成 ---
     pushRawLine(title);
-    if(b.id === "a") pushRawLine("行商:毎日◎(SSR出せば100k~)");
     
+    // 日数行
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
     pushRawLine("日数" + sep + hNums.join(sep));
     
+    // データ行（JSONの順序通り）
     Object.keys(combined).forEach(k => {
-        if (k === "行商") return;
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
-        // 「－」以外の有効なデータがある場合のみ行を追加
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
             pushRawLine(k + sep + dStr.split('').join(sep));
         }
@@ -113,8 +119,7 @@ function updateOutput() {
 
     if(b.id === "a") pushRawLine("※7日は6日の続き(半日)");
 
-    // 最終的な出力から余計な空行を完全に排除
-    document.getElementById('outputText').innerText = lines.filter(l => l.length > 0).join('\n');
+    document.getElementById('outputText').innerText = lines.join('\n');
 }
 
 function step(id, val) {
