@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.2";
+const APP_VERSION = "6.4.3";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -57,8 +57,8 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    const startRow = parseInt(document.getElementById('startRow').value) || 1;
-    const manualZen = parseInt(document.getElementById('zenPadding').value) || 0;
+    const startRow = parseInt(document.getElementById('startRow').value);
+    const manualZen = parseInt(document.getElementById('zenPadding').value);
 
     let combined = {};
     let totalMax = b.days;
@@ -87,34 +87,35 @@ function updateOutput() {
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    
     let zenCount = isOverLimit ? Math.max(0, 14 - totalMax) : manualZen;
     const heavyPadding = "　".repeat(zenCount);
 
     let lines = [];
-    let rowIdx = 1;
-    const addLine = (content) => {
-        const pad = (rowIdx >= startRow) ? heavyPadding : "";
-        lines.push(content + pad);
-        rowIdx++;
+    let currentLineIdx = 1;
+
+    // 行追加ロジック：パディング以外は何も追加しない
+    const pushLine = (text) => {
+        const pad = (currentLineIdx >= startRow) ? heavyPadding : "";
+        lines.push(text + pad);
+        currentLineIdx++;
     };
 
-    addLine(title);
-    if(b.id === "a") addLine("行商:毎日◎(SSR出せば100k~)");
+    pushLine(title);
+    if(b.id === "a") pushLine("行商:毎日◎(SSR出せば100k~)");
     
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
-    addLine("日数" + sep + hNums.join(sep));
+    pushLine("日数" + sep + hNums.join(sep));
     
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
-        let dStr = combined[k].substring(rStart - 1, totalMax);
-        if (dStr.replace(/－/g, '').length) {
-            addLine(k + sep + dStr.split('').join(sep));
+        let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
+        if (dStr && dStr.replace(/－/g, '').length) {
+            pushLine(k + sep + dStr.split('').join(sep));
         }
     });
 
-    if(b.id === "a") addLine("※7日は6日の続き(半日)");
+    if(b.id === "a") pushLine("※7日は6日の続き(半日)");
 
     document.getElementById('outputText').innerText = lines.join('\n');
 }
