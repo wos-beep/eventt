@@ -1,4 +1,4 @@
-const APP_VERSION = "6.5.9";
+const APP_VERSION = "6.6.0";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -30,11 +30,13 @@ function initApp() {
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
+
         if (id === 'baseEvent' || id === 'overlayEvent') {
             rawData.forEach(e => { 
                 if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); 
             });
         }
+
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
                 const zVal = document.getElementById('zenVal');
@@ -67,37 +69,28 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-function isWindows() {
-    if (navigator.userAgentData && navigator.userAgentData.platform) {
-        return navigator.userAgentData.platform.includes("Windows");
-    }
-    return navigator.userAgent.includes("Windows");
-}
-
-function generateFinalText(forceLF = false) {
+function generateFinalText() {
     const bEl = document.getElementById('baseEvent');
     if (!bEl || !rawData.length) return "";
     const b = rawData.find(x => x.id === bEl.value);
     if (!b) return "";
 
-    const isWin = !forceLF && isWindows();
-    // Windows判定時のみゼロ幅スペースをガードとして使用
-    const guard = isWin ? "\u200B" : "";
-    const nl = isWin ? "\r\n" : "\n";
-
     const oIdEl = document.getElementById('overlayEvent');
     const oId = oIdEl ? oIdEl.value : "";
     const o = oId ? rawData.find(x => x.id === oId) : null;
-    const shift = (document.getElementById('overlayShift')) ? parseInt(document.getElementById('overlayShift').value) || 0 : 0;
-    const rStart = (document.getElementById('rangeStart')) ? parseInt(document.getElementById('rangeStart').value) || 1 : 1;
-    const isPaddingEnabled = (document.getElementById('usePadding')) ? document.getElementById('usePadding').checked : false;
-    const startRowSetting = (document.getElementById('startRow')) ? parseInt(document.getElementById('startRow').value) : 1;
-    const zenCount = (document.getElementById('zenPadding')) ? parseInt(document.getElementById('zenPadding').value) : 0;
+    
+    // 設定値をその都度取得
+    const shift = parseInt(document.getElementById('overlayShift')?.value || 0);
+    const rStart = parseInt(document.getElementById('rangeStart')?.value || 1);
+    const isPaddingEnabled = document.getElementById('usePadding')?.checked || false;
+    const startRowSetting = parseInt(document.getElementById('startRow')?.value || 1);
+    const zenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
 
     let combined = {};
     let totalMax = b.days;
     let title = b.name;
 
+    // データ合成処理
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
@@ -117,42 +110,51 @@ function generateFinalText(forceLF = false) {
             }
             combined[k] = row;
         });
-    } else { combined = JSON.parse(JSON.stringify(b.data)); }
+    } else { 
+        combined = JSON.parse(JSON.stringify(b.data)); 
+    }
 
     const isOverLimit = totalMax >= 10;
     const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
     const heavyPadding = (isPaddingEnabled && zenCount > 0) ? "　".repeat(zenCount) : "";
 
     let lines = [];
-    let currentRowNum = 1;
+    let currentLineCount = 1; // 1行目からカウント
+
     const addLine = (text) => {
-        if (!text) return;
         const base = text.toString().trim();
         if (base === "") return;
-        const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
-        // 行末にガード文字を結合
-        lines.push(base + pad + guard);
-        currentRowNum++;
+
+        // 現在の行数が「パディング開始行」以降であれば全角スペースを付与
+        const pad = (isPaddingEnabled && currentLineCount >= startRowSetting) ? heavyPadding : "";
+        
+        lines.push(base + pad);
+        currentLineCount++; // 実際に追加されたときだけ行数を進める
     };
 
+    // 1行目：タイトル
     addLine(title);
+    
+    // 2行目：日数行
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
     addLine("日数" + sep + hNums.join(sep));
     
+    // 3行目以降：各項目
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
             addLine(k + sep + dStr.split('').join(sep));
         }
     });
+
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    return lines.join(nl);
+    return lines.join('\n');
 }
 
 function updateOutput() {
-    const displayText = generateFinalText(true);
+    const displayText = generateFinalText();
     const out = document.getElementById('outputText');
     if(out) out.innerText = displayText;
 }
@@ -166,7 +168,7 @@ function step(id, val) {
 }
 
 async function copyToClipboard() {
-    const text = generateFinalText(false);
+    const text = generateFinalText();
     if (!text) return;
     try {
         await navigator.clipboard.writeText(text);
