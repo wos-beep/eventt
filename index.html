@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v6.4.0</title>
+    <title>Event Task Merger v6.4.2</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -16,32 +16,24 @@
         body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; }
         .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); width: 100%; max-width: 500px; }
         h3 { margin-top: 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-        
         .ctrl-group { margin-bottom: 15px; }
         .label { font-size: 0.85em; color: #aaa; margin-bottom: 5px; display: block; }
         .ctrl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
-        
         select, input { width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-color); box-sizing: border-box; }
-        
         .step-ctrl { display: flex; align-items: center; gap: 5px; background: var(--input-bg); border-radius: 6px; padding: 2px 5px; border: 1px solid var(--border-color); }
         .step-ctrl button { background: none; border: none; color: var(--accent-color); font-size: 1.2em; cursor: pointer; padding: 0 10px; }
         .step-ctrl input { border: none; text-align: center; width: 40px; background: none; padding: 5px 0; }
-
         details { background: #252525; border-radius: 6px; padding: 10px; margin-bottom: 15px; border: 1px solid #444; }
         summary { cursor: pointer; font-size: 0.9em; color: var(--accent-color); font-weight: bold; }
         .debug-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 0.85em; }
-        .debug-row input[type="range"] { width: 60%; }
-
         #outputText { white-space: pre-wrap; background: #000; color: #00ff41; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; min-height: 120px; border: 1px solid #333; margin-top: 15px; line-height: 1.2; }
         .copy-btn { width: 100%; margin-top: 15px; padding: 12px; border: none; border-radius: 6px; background: var(--accent-color); color: #000; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .copy-btn:hover { opacity: 0.8; transform: translateY(-1px); }
         #toast { display: none; position: fixed; bottom: 30px; background: var(--accent-color); color: #000; padding: 8px 20px; border-radius: 20px; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h3>Event Merger v6.4.0</h3>
-        
+        <h3>Event Merger v6.4.2</h3>
         <div class="ctrl-group">
             <span class="label">イベント選択（ベース / 重ねる）</span>
             <div class="ctrl">
@@ -49,27 +41,17 @@
                 <select id="overlayEvent"><option value="">重ねるイベントなし</option></select>
             </div>
         </div>
-
         <div class="ctrl">
             <div>
                 <span class="label">表示開始日</span>
-                <div class="step-ctrl">
-                    <button onclick="step('rangeStart', -1)">-</button>
-                    <input type="number" id="rangeStart" value="1" readonly>
-                    <button onclick="step('rangeStart', 1)">+</button>
-                </div>
+                <div class="step-ctrl"><button onclick="step('rangeStart', -1)">-</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart', 1)">+</button></div>
             </div>
             <div>
                 <span class="label">オフセット</span>
-                <div class="step-ctrl">
-                    <button onclick="step('overlayShift', -1)">-</button>
-                    <input type="number" id="overlayShift" value="0" readonly>
-                    <button onclick="step('overlayShift', 1)">+</button>
-                </div>
+                <div class="step-ctrl"><button onclick="step('overlayShift', -1)">-</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift', 1)">+</button></div>
             </div>
         </div>
-
-        <details>
+        <details open>
             <summary>🔧 手動レイアウト微調整</summary>
             <div class="debug-row">
                 <span>パディング開始行:</span>
@@ -77,11 +59,10 @@
             </div>
             <div class="debug-row">
                 <span>追加全角スペース:</span>
-                <input type="range" id="zenPadding" min="0" max="10" value="0">
-                <span id="zenVal">0</span>
+                <input type="range" id="zenPadding" min="0" max="10" value="4">
+                <span id="zenVal">4</span>
             </div>
         </details>
-
         <div id="outputText"></div>
         <button class="copy-btn" onclick="copyToClipboard()">結果をコピー</button>
     </div>
