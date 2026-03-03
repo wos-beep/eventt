@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v3.9</title>
+    <title>Event Task Merger v4.2</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 15px; margin: 0; }
         .container { max-width: 480px; margin: auto; }
@@ -20,27 +20,27 @@
         
         pre { 
             background: #000; padding: 15px; border-radius: 8px; 
-            font-size: 0.85rem; color: #fff; border: 1px solid #333; 
-            margin: 0; line-height: 1.5; font-family: monospace;
+            font-size: 0.9rem; color: #fff; border: 1px solid #333; 
+            margin: 0; line-height: 1.6; font-family: "Courier New", Courier, monospace;
             white-space: pre; overflow-x: auto;
         }
         .copy-btn { width: 100%; padding: 18px; background: #bb86fc; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 1.1rem; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #03dac6; color: #000; padding: 10px 24px; border-radius: 30px; display: none; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
 <div class="container">
-    <header><h1>📋 タスク統合 v3.9</h1></header>
+    <header><h1>📋 タスク統合 v4.2</h1></header>
     <div class="card">
         <label>ベースイベント</label><select id="baseEvent" onchange="updateOutput()"></select>
-        <label>重ね合わせ（任意）</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select>
+        <label>重ね合わせ</label><select id="overlayEvent" onchange="updateOutput()"><option value="">なし</option></select>
         <div class="stepper-container">
             <div class="stepper-item"><label>重ねズレ</label><div class="stepper"><button onclick="step('overlayShift',-1)">－</button><input type="number" id="overlayShift" value="0" readonly><button onclick="step('overlayShift',1)">＋</button></div></div>
             <div class="stepper-item"><label>開始日</label><div class="stepper"><button onclick="step('rangeStart',-1)">－</button><input type="number" id="rangeStart" value="1" readonly><button onclick="step('rangeStart',1)">＋</button></div></div>
         </div>
     </div>
     <div id="outputArea" class="card" style="display:none;">
-        <label>プレビュー（画像上段形式）</label>
+        <label>プレビュー（しげんくん完全再現）</label>
         <pre id="outputText"></pre>
         <button class="copy-btn" onclick="copyToClipboard()">内容をコピー</button>
     </div>
@@ -48,58 +48,44 @@
 <div id="toast" class="toast">コピーしました！</div>
 
 <script>
+// しげんくん仕様：全幅2文字分に厳密に合わせた項目名
+const nameMap = { 
+    "ﾀﾞｲﾔ":"ﾀﾞｲﾔ", "火晶":"火晶", "加速":"加速", "採集":"採集", 
+    "欠片":"欠片", "領装":"領装", "専門":"専門", "宝石":"宝石", 
+    "ﾍﾟｯﾄ":"ﾍﾟｯﾄ", "英装":"英装", "訓練":"訓練", "行商":"行商",
+    "建造":"建造", "研究":"研究", "鍵　":"鍵　", "野獣":"野獣", "ﾙﾚｯﾄ":"ﾙﾚｯﾄ"
+};
+
 const rawData = [
-    { id: "a", name: "同盟大作戦with軍備･士官", data: {"ﾀﾞｲﾔ":"△◎△△◯△△","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","専門":"◯◎－－－－－","宝石":"－－◯△－△△","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","訓練":"－－△◎－－－","行商":"◎◎◎◎◎◎◎"}, days: 7 },
-    { id: "s", name: "季節イベント", data: {"建造":"◯－－－－◯－","研究":"◯－－－－◯－","訓練":"◯－－◎－◯－","鍵　":"◯－◯－－－－","欠片":"◯－◯－－－－","野獣":"－◯－－－－－","加速":"－－◯－－－◯","英装":"－－－－◯－－","ﾀﾞｲﾔ":"－－－－◯－－","採集":"－－－－－◯－","領装":"－－－－－－◯"}, days: 7 },
-    { id: "k", name: "最強王国準備フェーズ", data: {"宝石":"◯－◯◯－","火晶":"◯◯－－◯","加速":"◯◯－－◯","ﾙﾚｯﾄ":"－◯◯－－","欠片":"－◯◯－－","採集":"－◯－－－","専門":"－◯◯－－","ﾍﾟｯﾄ":"－－◯－◯","野獣":"－－◯－－","英装":"－－－－◯","訓練":"－－－◯－","領装":"－－－－◯"}, days: 5 },
-    { id: "i", name: "氷原支配者", data: {"火晶":"◯◯－－◯－◯","加速":"◯◯－－◯－◯","宝石":"◯－◯◯－－－","ﾙﾚｯﾄ":"－◯◯－－－－","欠片":"－◯◯－－－◯","英装":"－◯－◯◯－－","専門":"－◯◯－－－－","ﾍﾟｯﾄ":"－－◯－－－◯","訓練":"－－－◯－◯－","領装":"－－－－－◯◯","採集":"－－－－－－◯"}, days: 7 },
-    { id: "o", name: "軍備競技･士官計画", data: {"火晶":"◯◯－－◯◯－－","加速":"◯◯－－◯◯－－","欠片":"◯◯－－－－◯◯","領装":"◯◯－－◯◯◯◯","専門":"◯◯－－－－－－","宝石":"－－◯◯－－－－","英装":"－－◯◯◯◯◯◯","訓練":"－－◯◯－－－－"}, days: 8 }
+    { id: "a", name: "同盟大作戦with軍備･士官", data: {"ﾀﾞｲﾔ":"△◎△△◯△△","火晶":"◯◯－－◎◯◯","加速":"◯◯－－◎◯◯","採集":"◎－◎－－－－","欠片":"△◯－－－△◎","領装":"△△－－◯△◎","専門":"◯◎－－－－－","宝石":"－－◯△－△△","ﾍﾟｯﾄ":"－－◯－－◎◎","英装":"－－△◯△◎◎","訓練":"－－△◎－－－","行商":"◎◎◎◎◎◎◎"}, days: 7 }
 ];
 
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
-const bSel = document.getElementById('baseEvent');
-const oSel = document.getElementById('overlayEvent');
-rawData.forEach(e => { bSel.add(new Option(e.name, e.id)); oSel.add(new Option(e.name, e.id)); });
 
 function updateOutput() {
-    const b = rawData.find(x => x.id === bSel.value);
-    const oId = oSel.value;
-    const shift = parseInt(document.getElementById('overlayShift').value) || 0;
+    const b = rawData[0]; 
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    let combined = {};
-    let totalMax = b.days;
-    let title = b.name;
-
-    if (oId) {
-        const o = rawData.find(x => x.id === oId);
-        totalMax = Math.max(b.days, o.days + shift);
-        title = `${b.name.substring(0,2)}+${o.name.substring(0,2)}`;
-        new Set([...Object.keys(b.data), ...Object.keys(o.data)]).forEach(k => {
-            let row = "";
-            for (let d = 0; d < totalMax; d++) {
-                const bV = (b.data[k] || "")[d] || "－";
-                const oV = (o.data[k] || "")[d - shift] || "－";
-                row += (bV !== "－" && oV !== "－") ? "◎" : (bV !== "－" ? bV : oV);
-            }
-            combined[k] = row;
-        });
-    } else { combined = b.data; totalMax = b.days; }
-
-    const displayDays = totalMax - rStart + 1;
-    let header = "日数　" + Array.from({length: displayDays}, (_, i) => {
+    let res = b.name + "\n";
+    res += "行商は毎日◎(SSRのみ出せば毎日100k~120k貰える)\n";
+    
+    const displayDays = b.days - rStart + 1;
+    res += "日数　" + Array.from({length: displayDays}, (_, i) => {
         let n = i + rStart;
         return n.toString().split('').map(d => fullDigits[d] || d).join('');
     }).join('　') + "\n";
     
-    let res = title + "\n" + header;
-    
-    Object.keys(combined).forEach(k => {
-        // 項目名(全角2文字) + 半角スペース
-        let namePart = (k.length === 2 ? k : k + " ") + " ";
-        let dataPart = combined[k].substring(rStart - 1, totalMax).split('').join('｜');
-        res += namePart + dataPart + "\n";
+    const keys = Object.keys(b.data);
+    keys.forEach(k => {
+        if (k === "行商") return;
+        let fixedName = nameMap[k] || k;
+        let dataPart = b.data[k].substring(rStart - 1, b.days).split('').join('｜');
+        
+        // 全幅2文字分の項目名 + 全角スペース1つ + データ
+        res += fixedName + "　" + dataPart + "\n";
     });
+
+    res += "※7日目は6日目の続き。半日のみ";
 
     document.getElementById('outputText').innerText = res.trim();
     document.getElementById('outputArea').style.display = 'block';
@@ -108,8 +94,7 @@ function updateOutput() {
 function step(id, val) {
     const el = document.getElementById(id);
     let v = parseInt(el.value) + val;
-    if (id === 'rangeStart') v = Math.min(8, Math.max(1, v));
-    if (id === 'overlayShift') v = Math.max(0, v);
+    if (id === 'rangeStart') v = Math.min(7, Math.max(1, v));
     el.value = v;
     updateOutput();
 }
@@ -121,6 +106,9 @@ function copyToClipboard() {
         setTimeout(() => s.style.display = 'none', 1500);
     });
 }
+
+const bSel = document.getElementById('baseEvent');
+rawData.forEach(e => { bSel.add(new Option(e.name, e.id)); });
 updateOutput();
 </script>
 </body>
