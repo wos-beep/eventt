@@ -1,4 +1,4 @@
-const APP_VERSION = "6.4.3";
+const APP_VERSION = "6.4.4";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -57,7 +57,7 @@ function updateOutput() {
     const shift = parseInt(document.getElementById('overlayShift').value) || 0;
     const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    const startRow = parseInt(document.getElementById('startRow').value);
+    const startRowSetting = parseInt(document.getElementById('startRow').value);
     const manualZen = parseInt(document.getElementById('zenPadding').value);
 
     let combined = {};
@@ -93,29 +93,33 @@ function updateOutput() {
     let lines = [];
     let currentLineIdx = 1;
 
-    // 行追加ロジック：パディング以外は何も追加しない
-    const pushLine = (text) => {
-        const pad = (currentLineIdx >= startRow) ? heavyPadding : "";
-        lines.push(text + pad);
+    // パディングを付与するか判定する関数（データ行のみに限定）
+    const getFinalLine = (text, isDataRow = false) => {
+        const pad = (isDataRow && currentLineIdx >= startRowSetting) ? heavyPadding : "";
         currentLineIdx++;
+        return text + pad;
     };
 
-    pushLine(title);
-    if(b.id === "a") pushLine("行商:毎日◎(SSR出せば100k~)");
+    // 1-2行目：パディングなし
+    lines.push(getFinalLine(title));
+    if(b.id === "a") lines.push(getFinalLine("行商:毎日◎(SSR出せば100k~)"));
     
+    // 3行目：日数（ここはパディングなしを推奨）
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
-    pushLine("日数" + sep + hNums.join(sep));
+    lines.push(getFinalLine("日数" + sep + hNums.join(sep)));
     
+    // 4行目以降：データ行（ここにパディングを適用）
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').length) {
-            pushLine(k + sep + dStr.split('').join(sep));
+            lines.push(getFinalLine(k + sep + dStr.split('').join(sep), true));
         }
     });
 
-    if(b.id === "a") pushLine("※7日は6日の続き(半日)");
+    // 最終行：パディングなし
+    if(b.id === "a") lines.push(getFinalLine("※7日は6日の続き(半日)"));
 
     document.getElementById('outputText').innerText = lines.join('\n');
 }
