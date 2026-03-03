@@ -1,4 +1,4 @@
-const APP_VERSION = "6.5.7";
+const APP_VERSION = "6.5.8";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -6,7 +6,6 @@ fetch('event.json').then(res => res.json()).then(data => {
     rawData = data;
     initApp();
     displayVersion();
-    // 最後に強制的に描画
     updateOutput();
 }).catch(err => console.error("Data Load Error:", err));
 
@@ -30,9 +29,8 @@ function initApp() {
     const ids = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'usePadding'];
     ids.forEach(id => {
         const el = document.getElementById(id);
-        if (!el) return; // 要素がなくても無視して次へ
+        if (!el) return;
 
-        // イベント選択肢の生成
         if (id === 'baseEvent' || id === 'overlayEvent') {
             rawData.forEach(e => { 
                 if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); 
@@ -71,7 +69,15 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-function generateFinalText() {
+// Windows判定（Client Hints + UA文字列）
+function isWindows() {
+    if (navigator.userAgentData && navigator.userAgentData.platform) {
+        return navigator.userAgentData.platform.includes("Windows");
+    }
+    return navigator.userAgent.includes("Windows");
+}
+
+function generateFinalText(forceLF = false) {
     const bEl = document.getElementById('baseEvent');
     if (!bEl || !rawData.length) return "";
     const b = rawData.find(x => x.id === bEl.value);
@@ -83,16 +89,12 @@ function generateFinalText() {
     
     const sEl = document.getElementById('overlayShift');
     const shift = sEl ? parseInt(sEl.value) || 0 : 0;
-    
     const rsEl = document.getElementById('rangeStart');
     const rStart = rsEl ? parseInt(rsEl.value) || 1 : 1;
-    
     const upEl = document.getElementById('usePadding');
     const isPaddingEnabled = upEl ? upEl.checked : false;
-    
     const srEl = document.getElementById('startRow');
     const startRowSetting = srEl ? parseInt(srEl.value) : 1;
-    
     const zpEl = document.getElementById('zenPadding');
     const zenCount = zpEl ? parseInt(zpEl.value) : 0;
 
@@ -129,7 +131,6 @@ function generateFinalText() {
 
     let lines = [];
     let currentRowNum = 1;
-
     const addLine = (text) => {
         if (!text) return;
         const base = text.toString().trim();
@@ -153,11 +154,14 @@ function generateFinalText() {
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    return lines.join('\n');
+    // Windows環境かつプレビュー表示でない場合は CRLF を使用
+    const nl = (!forceLF && isWindows()) ? "\r\n" : "\n";
+    return lines.join(nl);
 }
 
 function updateOutput() {
-    const displayText = generateFinalText();
+    // 画面表示は常に LF (\n)
+    const displayText = generateFinalText(true);
     const out = document.getElementById('outputText');
     if(out) out.innerText = displayText;
 }
@@ -171,7 +175,8 @@ function step(id, val) {
 }
 
 async function copyToClipboard() {
-    const text = generateFinalText();
+    // コピー時は環境判定に基づいた改行コードを使用
+    const text = generateFinalText(false);
     if (!text) return;
     try {
         await navigator.clipboard.writeText(text);
