@@ -1,4 +1,4 @@
-const APP_VERSION = "6.2.0";
+const APP_VERSION = "6.2.1";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -46,6 +46,7 @@ function updateOutput() {
     const startRow = parseInt(document.getElementById('startRow').value) || 11;
     const zenCount = parseInt(document.getElementById('zenPadding').value) || 0;
     const invCount = parseInt(document.getElementById('invPadding').value) || 0;
+    const heavyPadding = "　".repeat(zenCount) + "\u2800".repeat(invCount);
 
     let combined = {};
     let totalMax = b.days;
@@ -74,27 +75,25 @@ function updateOutput() {
         combined = b.data;
     }
 
-    // --- レイアウト構成 (v6.2.0) ---
-    // 10日以上の場合は物理的な限界を超えるため、セパレーターを抜く
+    // --- レイアウト構成 (v6.2.1) ---
     const isOverLimit = totalMax >= 10;
     const isSlim = totalMax >= 8;
+    // 10日以上の時はセパレーターを抜く
     const sep = isOverLimit ? "" : (isSlim ? "|" : "｜"); 
-    
-    // 10日以上の時は自爆防止のためパディングを自動で0にする
-    const heavyPadding = isOverLimit ? "" : ("　".repeat(zenCount) + "\u2800".repeat(invCount));
 
     let lines = [];
     lines.push(title);
     if(b.id === "a") lines.push("商:毎日◎(SSR出せば100k~)");
     
+    // 日数ヘッダー (10以上は半角、1-9は全角で幅を統一)
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) {
-        // 10日以上の時は数字も半角に統一
-        let n = (isOverLimit || i >= 10) ? i : fullDigits[i];
+        let n = i >= 10 ? i.toString() : fullDigits[i];
         hNums.push(n);
     }
     lines.push("日数" + sep + hNums.join(sep));
     
+    // データ行
     Object.keys(combined).forEach(k => {
         if (k === "行商") return;
         let dStr = combined[k].substring(rStart - 1, totalMax);
@@ -106,6 +105,7 @@ function updateOutput() {
 
     let finalOutput = "";
     lines.forEach((line, index) => {
+        // 全日数パターンでデバッグパネルのパディング設定を有効にする
         const currentPad = (index + 1 >= startRow) ? heavyPadding : "";
         finalOutput += line + currentPad + "\n";
     });
