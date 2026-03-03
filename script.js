@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.0";
+const APP_VERSION = "6.6.2";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -30,13 +30,9 @@ function initApp() {
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-
         if (id === 'baseEvent' || id === 'overlayEvent') {
-            rawData.forEach(e => { 
-                if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); 
-            });
+            rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
         }
-
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
                 const zVal = document.getElementById('zenVal');
@@ -75,22 +71,16 @@ function generateFinalText() {
     const b = rawData.find(x => x.id === bEl.value);
     if (!b) return "";
 
-    const oIdEl = document.getElementById('overlayEvent');
-    const oId = oIdEl ? oIdEl.value : "";
+    const oId = document.getElementById('overlayEvent')?.value || "";
     const o = oId ? rawData.find(x => x.id === oId) : null;
-    
-    // 設定値をその都度取得
     const shift = parseInt(document.getElementById('overlayShift')?.value || 0);
     const rStart = parseInt(document.getElementById('rangeStart')?.value || 1);
-    const isPaddingEnabled = document.getElementById('usePadding')?.checked || false;
-    const startRowSetting = parseInt(document.getElementById('startRow')?.value || 1);
-    const zenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
-
+    const isManualEnabled = document.getElementById('usePadding')?.checked || false;
+    
     let combined = {};
     let totalMax = b.days;
     let title = b.name;
 
-    // データ合成処理
     if (o) {
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
@@ -114,33 +104,50 @@ function generateFinalText() {
         combined = JSON.parse(JSON.stringify(b.data)); 
     }
 
-    const isOverLimit = totalMax >= 10;
-    const sep = isOverLimit ? "" : (totalMax >= 8 ? "|" : "｜"); 
-    const heavyPadding = (isPaddingEnabled && zenCount > 0) ? "　".repeat(zenCount) : "";
+    // --- セパレータとパディングの決定 ---
+    let sep = "｜"; // デフォルト全角
+    let finalStartRow = 11;
+    let finalZenCount = 0;
 
+    if (totalMax >= 9) {
+        sep = "|"; // 9日以上は半角に切り替え
+    }
+
+    if (isManualEnabled) {
+        finalStartRow = parseInt(document.getElementById('startRow')?.value || 1);
+        finalZenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
+    } else {
+        // 自動レイアウトロジック
+        if (totalMax <= 6) {
+            finalZenCount = 2;
+        } else if (totalMax >= 9 && totalMax <= 13) {
+            finalZenCount = 14 - totalMax; // 法則適用 (9日:5, 10日:4...)
+        } else {
+            finalZenCount = 0; // 7, 8日 および 14日以上
+        }
+    }
+
+    const heavyPadding = finalZenCount > 0 ? "　".repeat(finalZenCount) : "";
     let lines = [];
-    let currentLineCount = 1; // 1行目からカウント
+    let currentLineCount = 1;
 
     const addLine = (text) => {
         const base = text.toString().trim();
         if (base === "") return;
-
-        // 現在の行数が「パディング開始行」以降であれば全角スペースを付与
-        const pad = (isPaddingEnabled && currentLineCount >= startRowSetting) ? heavyPadding : "";
-        
+        const pad = (currentLineCount >= finalStartRow) ? heavyPadding : "";
         lines.push(base + pad);
-        currentLineCount++; // 実際に追加されたときだけ行数を進める
+        currentLineCount++;
     };
 
-    // 1行目：タイトル
     addLine(title);
-    
-    // 2行目：日数行
     let hNums = [];
-    for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
+    for(let i = rStart; i <= totalMax; i++) {
+        // セパレータが半角の場合は、日数も半角数字に寄せたほうが幅が揃いやすい
+        const num = (totalMax >= 9 || i >= 10) ? i : fullDigits[i];
+        hNums.push(num);
+    }
     addLine("日数" + sep + hNums.join(sep));
     
-    // 3行目以降：各項目
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
@@ -154,9 +161,8 @@ function generateFinalText() {
 }
 
 function updateOutput() {
-    const displayText = generateFinalText();
     const out = document.getElementById('outputText');
-    if(out) out.innerText = displayText;
+    if(out) out.innerText = generateFinalText();
 }
 
 function step(id, val) {
