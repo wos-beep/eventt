@@ -31,8 +31,8 @@ function getEventChar(eventId, dayIndex) {
         if (day === 1 || day === 2 || day === 5 || day === 6) return "軍";
         if (day === 3 || day === 4 || day === 7 || day === 8) return "士";
     }
-    if (eventId === "k") return "王"; // 最強王国
-    if (eventId === "i") return "支配"; // 氷原支配者（必要なら1文字に調整）
+    if (eventId === "k") return "準"; // 最強王国
+    if (eventId === "i") return "氷"; // 氷原支配者（必要なら1文字に調整）
     return "◯"; 
 }
 
