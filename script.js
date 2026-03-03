@@ -1,49 +1,61 @@
-const APP_VERSION = "6.5.6";
+const APP_VERSION = "6.5.7";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
 fetch('event.json').then(res => res.json()).then(data => {
     rawData = data;
     initApp();
-    displayVersion(); 
-});
+    displayVersion();
+    // 最後に強制的に描画
+    updateOutput();
+}).catch(err => console.error("Data Load Error:", err));
 
 function displayVersion() {
-    const title = document.querySelector('h3');
-    if (title) {
-        let vEl = document.getElementById('versionDisplay');
-        if (!vEl) {
-            vEl = document.createElement('span');
-            vEl.id = 'versionDisplay';
-            vEl.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
-            title.appendChild(vEl);
+    try {
+        const title = document.querySelector('h3');
+        if (title) {
+            let vEl = document.getElementById('versionDisplay');
+            if (!vEl) {
+                vEl = document.createElement('span');
+                vEl.id = 'versionDisplay';
+                vEl.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
+                title.appendChild(vEl);
+            }
+            vEl.innerText = `v${APP_VERSION}`;
         }
-        vEl.innerText = `v${APP_VERSION}`;
-    }
+    } catch(e) { console.warn("Version display failed", e); }
 }
 
 function initApp() {
     const ids = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'usePadding'];
     ids.forEach(id => {
         const el = document.getElementById(id);
-        if (!el) return;
+        if (!el) return; // 要素がなくても無視して次へ
+
+        // イベント選択肢の生成
+        if (id === 'baseEvent' || id === 'overlayEvent') {
+            rawData.forEach(e => { 
+                if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); 
+            });
+        }
+
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
                 const zVal = document.getElementById('zenVal');
-                if(zVal) zVal.innerText = document.getElementById('zenPadding').value;
+                if(zVal) zVal.innerText = el.value;
             }
             if(id === 'baseEvent') filterOverlayOptions();
             updateOutput();
         });
     });
     filterOverlayOptions();
-    updateOutput();
 }
 
 function filterOverlayOptions() {
-    const bValue = document.getElementById('baseEvent').value;
+    const bEl = document.getElementById('baseEvent');
     const oSel = document.getElementById('overlayEvent');
-    if(!oSel) return;
+    if(!bEl || !oSel) return;
+    const bValue = bEl.value;
     Array.from(oSel.options).forEach(opt => {
         if (!opt.value) return;
         opt.style.display = (opt.value === bValue) ? 'none' : 'block';
@@ -60,17 +72,29 @@ function getEventChar(eventId, dayIndex) {
 }
 
 function generateFinalText() {
-    const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
+    const bEl = document.getElementById('baseEvent');
+    if (!bEl || !rawData.length) return "";
+    const b = rawData.find(x => x.id === bEl.value);
     if (!b) return "";
 
-    const oId = document.getElementById('overlayEvent').value;
+    const oIdEl = document.getElementById('overlayEvent');
+    const oId = oIdEl ? oIdEl.value : "";
     const o = oId ? rawData.find(x => x.id === oId) : null;
-    const shift = parseInt(document.getElementById('overlayShift').value) || 0;
-    const rStart = parseInt(document.getElementById('rangeStart').value) || 1;
     
-    const isPaddingEnabled = document.getElementById('usePadding').checked;
-    const startRowSetting = parseInt(document.getElementById('startRow').value);
-    const zenCount = parseInt(document.getElementById('zenPadding').value);
+    const sEl = document.getElementById('overlayShift');
+    const shift = sEl ? parseInt(sEl.value) || 0 : 0;
+    
+    const rsEl = document.getElementById('rangeStart');
+    const rStart = rsEl ? parseInt(rsEl.value) || 1 : 1;
+    
+    const upEl = document.getElementById('usePadding');
+    const isPaddingEnabled = upEl ? upEl.checked : false;
+    
+    const srEl = document.getElementById('startRow');
+    const startRowSetting = srEl ? parseInt(srEl.value) : 1;
+    
+    const zpEl = document.getElementById('zenPadding');
+    const zenCount = zpEl ? parseInt(zpEl.value) : 0;
 
     let combined = {};
     let totalMax = b.days;
@@ -129,12 +153,10 @@ function generateFinalText() {
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    // 純粋に \n だけで結合
     return lines.join('\n');
 }
 
 function updateOutput() {
-    if (!rawData.length) return;
     const displayText = generateFinalText();
     const out = document.getElementById('outputText');
     if(out) out.innerText = displayText;
@@ -151,16 +173,12 @@ function step(id, val) {
 async function copyToClipboard() {
     const text = generateFinalText();
     if (!text) return;
-
     try {
-        // Modern API: textarea を介さず直接クリップボードへ
         await navigator.clipboard.writeText(text);
         const s = document.getElementById('toast');
         if(s) {
             s.style.display = 'block';
             setTimeout(() => s.style.display = 'none', 1500);
         }
-    } catch (err) {
-        console.error('Copy failed', err);
-    }
+    } catch (err) { console.error('Copy failed', err); }
 }
