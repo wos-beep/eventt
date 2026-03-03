@@ -1,29 +1,25 @@
-const APP_VERSION = "6.5.4"; // ← この値を画面に表示します
+const APP_VERSION = "6.5.6";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
 fetch('event.json').then(res => res.json()).then(data => {
     rawData = data;
     initApp();
-    displayVersion(); // バージョン表示を実行
+    displayVersion(); 
 });
 
-// 画面にバージョンを表示する関数
 function displayVersion() {
-    let vEl = document.getElementById('versionDisplay');
-    if (!vEl) {
-        // もしHTMLに要素がなければ、h1（タイトル）の横に作る
-        const title = document.querySelector('h1');
-        if (title) {
+    const title = document.querySelector('h3');
+    if (title) {
+        let vEl = document.getElementById('versionDisplay');
+        if (!vEl) {
             vEl = document.createElement('span');
             vEl.id = 'versionDisplay';
-            vEl.style.fontSize = '12px';
-            vEl.style.marginLeft = '10px';
-            vEl.style.color = '#888';
+            vEl.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
             title.appendChild(vEl);
         }
+        vEl.innerText = `v${APP_VERSION}`;
     }
-    if (vEl) vEl.innerText = `v${APP_VERSION}`;
 }
 
 function initApp() {
@@ -31,9 +27,6 @@ function initApp() {
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        if (id === 'baseEvent' || id === 'overlayEvent') {
-            rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
-        }
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
                 const zVal = document.getElementById('zenVal');
@@ -54,7 +47,6 @@ function filterOverlayOptions() {
     Array.from(oSel.options).forEach(opt => {
         if (!opt.value) return;
         opt.style.display = (opt.value === bValue) ? 'none' : 'block';
-        if (oSel.value === bValue) oSel.value = "";
     });
 }
 
@@ -67,23 +59,9 @@ function getEventChar(eventId, dayIndex) {
     return "◯";
 }
 
-// Windows判定（Client Hints + 従来のUA判定のハイブリッド）
-function isWindowsOS() {
-    if (navigator.userAgentData && navigator.userAgentData.platform) {
-        return navigator.userAgentData.platform.includes("Windows");
-    }
-    return navigator.userAgent.includes("Windows");
-}
-
-function generateFinalText(mode = "auto") {
+function generateFinalText() {
     const b = rawData.find(x => x.id === document.getElementById('baseEvent').value);
     if (!b) return "";
-
-    // モード判定
-    const isWin = (mode === "win" || (mode === "auto" && isWindowsOS()));
-    const nl = isWin ? "\r\n" : "\n";
-    // Windows用：改行を「2つの連続したLF」と誤認させないための不可視ガード
-    const guard = isWin ? "\u200B" : "";
 
     const oId = document.getElementById('overlayEvent').value;
     const o = oId ? rawData.find(x => x.id === oId) : null;
@@ -133,12 +111,11 @@ function generateFinalText(mode = "auto") {
         const base = text.toString().trim();
         if (base === "") return;
         const pad = (isPaddingEnabled && currentRowNum >= startRowSetting) ? heavyPadding : "";
-        lines.push(base + pad + guard);
+        lines.push(base + pad);
         currentRowNum++;
     };
 
     addLine(title);
-    
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push((isOverLimit || i >= 10) ? i : fullDigits[i]);
     addLine("日数" + sep + hNums.join(sep));
@@ -152,13 +129,13 @@ function generateFinalText(mode = "auto") {
 
     if(b.id === "a") addLine("※7日は6日の続き(半日)");
 
-    return lines.join(nl);
+    // 純粋に \n だけで結合
+    return lines.join('\n');
 }
 
 function updateOutput() {
     if (!rawData.length) return;
-    // 画面表示は常にLFで行い、ガード文字は消す
-    const displayText = generateFinalText("unix").replace(/\u200B/g, '');
+    const displayText = generateFinalText();
     const out = document.getElementById('outputText');
     if(out) out.innerText = displayText;
 }
@@ -171,20 +148,13 @@ function step(id, val) {
     }
 }
 
-function copyToClipboard() {
-    const text = generateFinalText("auto");
+async function copyToClipboard() {
+    const text = generateFinalText();
     if (!text) return;
 
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-9999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
     try {
-        document.execCommand('copy');
+        // Modern API: textarea を介さず直接クリップボードへ
+        await navigator.clipboard.writeText(text);
         const s = document.getElementById('toast');
         if(s) {
             s.style.display = 'block';
@@ -193,5 +163,4 @@ function copyToClipboard() {
     } catch (err) {
         console.error('Copy failed', err);
     }
-    document.body.removeChild(textArea);
 }
