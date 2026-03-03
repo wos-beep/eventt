@@ -3,15 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Task Merger v6.4.4</title>
+    <title>Event Task Merger v6.4.5</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-color: #e0e0e0;
-            --accent-color: #bb86fc;
-            --input-bg: #2d2d2d;
-            --border-color: #333;
+            --bg-color: #121212; --card-bg: #1e1e1e; --text-color: #e0e0e0;
+            --accent-color: #bb86fc; --input-bg: #2d2d2d; --border-color: #333;
         }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; }
         .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); width: 100%; max-width: 500px; }
@@ -29,13 +25,15 @@
         #outputText { white-space: pre-wrap; background: #000; color: #00ff41; padding: 15px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; min-height: 120px; border: 1px solid #333; margin-top: 15px; line-height: 1.2; }
         .copy-btn { width: 100%; margin-top: 15px; padding: 12px; border: none; border-radius: 6px; background: var(--accent-color); color: #000; font-weight: bold; cursor: pointer; transition: 0.3s; }
         #toast { display: none; position: fixed; bottom: 30px; background: var(--accent-color); color: #000; padding: 8px 20px; border-radius: 20px; font-size: 0.9em; font-weight: bold; }
+        .toggle-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .toggle-wrap input { width: auto; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h3>Event Merger v6.4.4</h3>
+        <h3>Event Merger v6.4.5</h3>
         <div class="ctrl-group">
-            <span class="label">イベント選択（ベース / 重ねる）</span>
+            <span class="label">イベント選択</span>
             <div class="ctrl">
                 <select id="baseEvent"></select>
                 <select id="overlayEvent"><option value="">重ねるイベントなし</option></select>
@@ -53,6 +51,11 @@
         </div>
         <details>
             <summary>🔧 手動レイアウト微調整</summary>
+            <div class="debug-row">
+                <label class="toggle-wrap">
+                    <input type="checkbox" id="usePadding" checked> <span>パディング（壁）を有効にする</span>
+                </label>
+            </div>
             <div class="debug-row">
                 <span>パディング開始行:</span>
                 <input type="number" id="startRow" value="4" min="1" max="25" style="width: 50px;">
