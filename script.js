@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.8";
+const APP_VERSION = "6.7.9";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -80,6 +80,7 @@ function generateFinalText() {
     let title = b.name;
 
     if (o) {
+        // 重ね合わせ時：代替文字に置換する
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
         const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
@@ -98,17 +99,8 @@ function generateFinalText() {
             combined[k] = row;
         });
     } else { 
+        // 単一イベント時：置換せず元データ（○等）を維持
         combined = JSON.parse(JSON.stringify(b.data)); 
-        if (eventChars[b.id]) {
-            Object.keys(combined).forEach(k => {
-                let newRow = "";
-                for (let d = 0; d < combined[k].length; d++) {
-                    const v = combined[k][d];
-                    newRow += (v === "◯" || v === "△") ? eventChars[b.id] : v;
-                }
-                combined[k] = newRow;
-            });
-        }
     }
 
     const displayedDays = totalMax - rStart + 1;
@@ -142,9 +134,9 @@ function generateFinalText() {
             
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                if (char === '|') currentWidth += 0.5; // 半角パイプを 0.5pt
-                else if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1.0; // その他半角は 1.0pt
-                else currentWidth += 2.0; // 全角は 2.0pt
+                if (char === '|') currentWidth += 0.5;
+                else if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1.0;
+                else currentWidth += 2.0;
             }
 
             let needWidth = TARGET_WIDTH_PT - currentWidth;
@@ -156,28 +148,33 @@ function generateFinalText() {
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
+        // コピー用：従来通り連結
         const rawResult = formattedLines.join('');
+        
         if (out) {
             out.style.setProperty('font-family', 'Consolas, monospace', 'important');
-            out.style.setProperty('white-space', 'normal', 'important'); 
-            out.style.setProperty('word-break', 'break-all', 'important'); 
+            out.style.setProperty('white-space', 'pre', 'important'); // \nを有効にする
+            out.style.setProperty('word-break', 'normal', 'important'); 
             out.style.setProperty('letter-spacing', '0px', 'important');
-            out.style.setProperty('box-sizing', 'content-box', 'important'); 
-            out.style.setProperty('overflow-x', 'hidden', 'important'); 
+            out.style.setProperty('padding', '10px', 'important');
+            out.style.setProperty('overflow-x', 'auto', 'important'); 
             
-            out.textContent = rawResult.replace(/　/g, '〼').replace(/ /g, '·');
-            // パイプがブラウザフォントで太すぎる分、枠を少しだけ広げて表示上の改行位置を調整
-            out.style.width = "34ch"; 
+            // プレビュー表示用：1行ごとに改行を付与して「食い込み」を防ぐ
+            const previewText = formattedLines.join('\n')
+                                .replace(/　/g, '〼')
+                                .replace(/ /g, '·');
+            out.textContent = previewText;
+            out.style.width = "auto"; // 内容に合わせて広げる
             out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
-        // Android/他 (省略)
         if (out) {
             out.style.removeProperty('font-family');
             out.style.removeProperty('white-space');
             out.style.removeProperty('word-break');
+            out.style.removeProperty('padding');
             out.style.width = "auto";
             out.style.color = "#00ff00";
         }
