@@ -1,7 +1,6 @@
-const APP_VERSION = "6.8.1";
+const APP_VERSION = "6.8.2";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
-const eventChars = { "a": "同", "s": "季", "o": "士" };
 
 function isWindows() { return navigator.platform.indexOf('Win') > -1; }
 
@@ -64,9 +63,17 @@ function filterOverlayOptions() {
     });
 }
 
+/**
+ * イベントIDと日数に応じた代替文字を返す
+ */
 function getEventChar(eventId, dayIndex) {
-    const char = eventChars[eventId];
-    return char || "◯";
+    if (eventId === "a") return "準"; // 最強王国準備
+    if (eventId === "s") return "季"; // 季節の挑戦
+    if (eventId === "o") {
+        // 2日ごとに「軍」と「士」を交互に返す (0,1->軍 / 2,3->士 / 4,5->軍 ...)
+        return (Math.floor(dayIndex / 2) % 2 === 0) ? "軍" : "士";
+    }
+    return "◯";
 }
 
 function generateFinalText() {
@@ -86,6 +93,7 @@ function generateFinalText() {
     let title = b.name;
 
     if (o) {
+        // 重ね合わせ時：動的ロジックで文字置換
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
         const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
@@ -104,6 +112,7 @@ function generateFinalText() {
             combined[k] = row;
         });
     } else { 
+        // 単体時：記号維持
         combined = JSON.parse(JSON.stringify(b.data)); 
     }
 
@@ -129,31 +138,24 @@ function generateFinalText() {
 
     if (isWindows()) {
         const TARGET_WIDTH_PT = 32.0; 
-        
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
-            
             let currentText = line.trim();
             let currentWidth = 0;
-            
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
                 if (char === '|') currentWidth += 0.5;
                 else if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1.0;
                 else currentWidth += 2.0;
             }
-
             let needWidth = TARGET_WIDTH_PT - currentWidth;
             if (needWidth <= 0) return currentText;
-
             let paddingCount = Math.floor(needWidth / 2);
             let halfSpace = (needWidth % 2 >= 1.0 || needWidth % 2 === 0.5) ? " " : "";
-            
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
         const rawResult = formattedLines.join('');
-        
         if (out) {
             out.style.setProperty('font-family', '"BIZ UDGothic", "MS Gothic", monospace', 'important');
             out.style.setProperty('white-space', 'pre', 'important');
@@ -161,10 +163,7 @@ function generateFinalText() {
             out.style.setProperty('letter-spacing', '0px', 'important');
             out.style.setProperty('padding', '12px', 'important');
             out.style.setProperty('display', 'inline-block', 'important');
-            
-            const previewText = formattedLines.join('\n')
-                                .replace(/　/g, '〼')
-                                .replace(/ /g, '·');
+            const previewText = formattedLines.join('\n').replace(/　/g, '〼').replace(/ /g, '·');
             out.textContent = previewText;
             out.style.width = "auto"; 
             out.style.color = "#88ff88";
@@ -172,7 +171,6 @@ function generateFinalText() {
         return rawResult;
 
     } else {
-        // Android/他: 手動レイアウト調整
         if (out) {
             out.style.removeProperty('font-family');
             out.style.setProperty('white-space', 'pre', 'important');
@@ -200,13 +198,8 @@ function generateFinalText() {
             if (rowNum >= finalStartRow && index < tempLines.length - 1) return text.trim() + heavyPadding;
             return text.trim();
         });
-
         const resultText = lines.join('\n');
-        
-        if (out) {
-            // Androidでもプレビュー上は 〼 と · で可視化する
-            out.textContent = resultText.replace(/　/g, '〼').replace(/ /g, '·');
-        }
+        if (out) out.textContent = resultText.replace(/　/g, '〼').replace(/ /g, '·');
         return resultText;
     }
 }
