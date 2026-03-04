@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.7";
+const APP_VERSION = "6.7.8";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -23,15 +23,6 @@ function displayVersion() {
         if (vEl) {
             vEl.innerText = `script.js v${APP_VERSION}`;
             vEl.style.cssText = 'font-size:12px; margin-left:8px; color:#888; font-weight:normal;';
-        } else {
-            const title = document.querySelector('h3');
-            if (title && !document.getElementById('fallbackVersion')) {
-                const span = document.createElement('span');
-                span.id = 'fallbackVersion';
-                span.innerText = ` (js v${APP_VERSION})`;
-                span.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
-                title.appendChild(span);
-            }
         }
     } catch(e) { console.warn("Version display failed", e); }
 }
@@ -141,7 +132,7 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        const TARGET_WIDTH_HW = 32; 
+        const TARGET_WIDTH_PT = 32; 
         
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
@@ -151,16 +142,16 @@ function generateFinalText() {
             
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                // 半角(ASCII/パイプ/半角カナ)は 1pt、それ以外は 2pt
-                if (char.match(/[| -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
-                else currentWidth += 2;
+                if (char === '|') currentWidth += 0.5; // 半角パイプを 0.5pt
+                else if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1.0; // その他半角は 1.0pt
+                else currentWidth += 2.0; // 全角は 2.0pt
             }
 
-            let needWidth = TARGET_WIDTH_HW - currentWidth;
+            let needWidth = TARGET_WIDTH_PT - currentWidth;
             if (needWidth <= 0) return currentText;
 
             let paddingCount = Math.floor(needWidth / 2);
-            let halfSpace = (needWidth % 2 !== 0) ? " " : "";
+            let halfSpace = (needWidth % 2 >= 1.0 || needWidth % 2 === 0.5) ? " " : "";
             
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
@@ -175,12 +166,14 @@ function generateFinalText() {
             out.style.setProperty('overflow-x', 'hidden', 'important'); 
             
             out.textContent = rawResult.replace(/　/g, '〼').replace(/ /g, '·');
-            out.style.width = "32ch"; 
+            // パイプがブラウザフォントで太すぎる分、枠を少しだけ広げて表示上の改行位置を調整
+            out.style.width = "34ch"; 
             out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
+        // Android/他 (省略)
         if (out) {
             out.style.removeProperty('font-family');
             out.style.removeProperty('white-space');
