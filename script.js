@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.1";
+const APP_VERSION = "6.7.2";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -17,18 +17,26 @@ function getAlignedDayNum(i) {
     return i.toString(); 
 }
 
+/**
+ * バージョン表示ロジック (v6.7.2 修正)
+ * HTML側に <span id="jsVersion"></span> があればそこへ、
+ * なければ従来通り h3 の末尾へフォールバックします。
+ */
 function displayVersion() {
     try {
-        const title = document.querySelector('h3');
-        if (title) {
-            let vEl = document.getElementById('versionDisplay');
-            if (!vEl) {
-                vEl = document.createElement('span');
-                vEl.id = 'versionDisplay';
-                vEl.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
-                title.appendChild(vEl);
+        const vEl = document.getElementById('jsVersion');
+        if (vEl) {
+            vEl.innerText = `script.js v${APP_VERSION}`;
+            vEl.style.cssText = 'font-size:12px; margin-left:8px; color:#888; font-weight:normal;';
+        } else {
+            const title = document.querySelector('h3');
+            if (title && !document.getElementById('fallbackVersion')) {
+                const span = document.createElement('span');
+                span.id = 'fallbackVersion';
+                span.innerText = ` (js v${APP_VERSION})`;
+                span.style.cssText = 'font-size:12px; margin-left:10px; color:#888; font-weight:normal;';
+                title.appendChild(span);
             }
-            vEl.innerText = `v${APP_VERSION}`;
         }
     } catch(e) { console.warn("Version display failed", e); }
 }
@@ -138,7 +146,7 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        // --- v6.7.1 全角16文字(32pt)アライン固定 ---
+        // --- v6.7.2 全角16文字(32pt)アライン修正 ---
         const TARGET_WIDTH_HW = 32; 
         
         let formattedLines = tempLines.map((line, index) => {
@@ -148,16 +156,18 @@ function generateFinalText() {
             let currentWidth = 0;
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                // 半角判定（ASCII + 半角カナ）
-                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
-                else currentWidth += 2;
+                // 半角判定（ASCII + 半角カナ）: 1ptとしてカウント
+                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) {
+                    currentWidth += 1;
+                } else {
+                    currentWidth += 2;
+                }
             }
 
             let needWidth = TARGET_WIDTH_HW - currentWidth;
             let paddingCount = Math.floor(needWidth / 2);
             let halfSpace = (needWidth % 2 !== 0) ? " " : "";
             
-            // 幅を超えていても最低1つの全角スペースで押し出す
             if (paddingCount <= 0) {
                 paddingCount = 1;
                 halfSpace = "";
@@ -172,16 +182,19 @@ function generateFinalText() {
             out.style.wordBreak = "break-all";
             out.style.whiteSpace = "normal";
             out.style.color = "#88ff88";
+            // プレビューの等幅フォント化
+            out.style.fontFamily = "'Courier New', Courier, monospace";
         }
         return rawResult;
 
     } else {
-        // Android/他: 通常の改行モード
+        // Android/他: 通常改行モード
         if (out) {
             out.style.width = "auto";
             out.style.wordBreak = "normal";
             out.style.whiteSpace = "pre-wrap";
             out.style.color = "#00ff00";
+            out.style.fontFamily = "inherit";
         }
         let finalZenCount = 0;
         if (isManualEnabled) {
