@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.4";
+const APP_VERSION = "6.6.5";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -124,15 +124,19 @@ function generateFinalText() {
         }
     }
 
-    // --- 【重要】表示日数に基づく自動調整ロジック (v6.6.4) ---
+    // --- 【重要】表示日数に基づく3段階動的判定 (v6.6.5) ---
     const displayedDays = totalMax - rStart + 1; 
-    let sep = "｜"; 
+    let sep = ""; 
     let finalZenCount = 0;
     let finalStartRow = 11;
 
-    // 1. セパレータの判定
-    if (displayedDays >= 9) {
-        sep = ""; 
+    // 1. セパレータの決定（表示日数に応じたスリム化）
+    if (displayedDays <= 6) {
+        sep = "｜"; // 6日以下は全角
+    } else if (displayedDays <= 8) {
+        sep = "|";  // 7-8日は半角（溢れ対策）
+    } else {
+        sep = "";   // 9日以上はなし
     }
 
     // 2. パディングの判定
@@ -145,6 +149,7 @@ function generateFinalText() {
         } else if (displayedDays >= 9 && displayedDays <= 13) {
             finalZenCount = 14 - displayedDays; 
         } else {
+            // 7, 8日は半角セパレータを使用するため、基本壁は0で様子見
             finalZenCount = 0; 
         }
     }
