@@ -1,4 +1,4 @@
-const APP_VERSION = "6.8.2";
+const APP_VERSION = "6.8.5";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -27,7 +27,6 @@ function displayVersion() {
 }
 
 function initApp() {
-    // Windows版なら手動調整パネルを非表示にする
     const manualPanel = document.querySelector('details');
     if (manualPanel && isWindows()) {
         manualPanel.style.display = 'none';
@@ -38,7 +37,15 @@ function initApp() {
         const el = document.getElementById(id);
         if (!el) return;
         if (id === 'baseEvent' || id === 'overlayEvent') {
-            rawData.forEach(e => { if(id === 'baseEvent' || e.id !== "") el.add(new Option(e.name, e.id)); });
+            // 重ねる側の初期値を「なし」にする
+            if(id === 'overlayEvent') {
+                el.innerHTML = '<option value="">なし</option>';
+            }
+            rawData.forEach(e => { 
+                if(id === 'baseEvent' || e.id !== "") {
+                    el.add(new Option(e.name, e.id));
+                }
+            });
         }
         el.addEventListener('input', () => {
             if(id === 'zenPadding') {
@@ -58,19 +65,17 @@ function filterOverlayOptions() {
     if(!bEl || !oSel) return;
     const bValue = bEl.value;
     Array.from(oSel.options).forEach(opt => {
-        if (!opt.value) return;
+        if (!opt.value) return; // 「なし」は常に表示
         opt.style.display = (opt.value === bValue) ? 'none' : 'block';
     });
 }
 
-/**
- * イベントIDと日数に応じた代替文字を返す
- */
 function getEventChar(eventId, dayIndex) {
-    if (eventId === "a") return "準"; // 最強王国準備
-    if (eventId === "s") return "季"; // 季節の挑戦
+    if (eventId === "k") return "準";
+    if (eventId === "i") return "氷";
+    if (eventId === "a") return "同";
+    if (eventId === "s") return "季";
     if (eventId === "o") {
-        // 2日ごとに「軍」と「士」を交互に返す (0,1->軍 / 2,3->士 / 4,5->軍 ...)
         return (Math.floor(dayIndex / 2) % 2 === 0) ? "軍" : "士";
     }
     return "◯";
@@ -93,7 +98,6 @@ function generateFinalText() {
     let title = b.name;
 
     if (o) {
-        // 重ね合わせ時：動的ロジックで文字置換
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
         const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
@@ -112,7 +116,6 @@ function generateFinalText() {
             combined[k] = row;
         });
     } else { 
-        // 単体時：記号維持
         combined = JSON.parse(JSON.stringify(b.data)); 
     }
 
@@ -132,7 +135,7 @@ function generateFinalText() {
         }
     });
 
-    if(b.id === "a") tempLines.push("⚠7日は6日の続き(半日)");
+    if(b.id === "k") tempLines.push("⚠7日は6日の続き(半日)");
 
     const out = document.getElementById('outputText');
 
@@ -172,13 +175,7 @@ function generateFinalText() {
 
     } else {
         if (out) {
-            out.style.removeProperty('font-family');
             out.style.setProperty('white-space', 'pre', 'important');
-            out.style.removeProperty('font-variant-numeric');
-            out.style.removeProperty('letter-spacing');
-            out.style.removeProperty('padding');
-            out.style.removeProperty('display');
-            out.style.width = "auto";
             out.style.color = "#00ff00";
         }
         let finalZenCount = 0;
