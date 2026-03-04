@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.6";
+const APP_VERSION = "6.6.7";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -18,10 +18,6 @@ fetch('event.json').then(res => res.json()).then(data => {
 function getAlignedDayNum(i) {
     if (i <= 9) return fullDigits[i];
     return i.toString(); 
-}
-
-function isWindows() {
-    return navigator.platform.indexOf('Win') > -1;
 }
 
 function displayVersion() {
@@ -124,21 +120,10 @@ function generateFinalText() {
         }
     }
 
-    // --- 表示日数に基づく動的判定 (v6.6.6) ---
     const displayedDays = totalMax - rStart + 1;
-    let sep = ""; 
+    let sep = (displayedDays <= 6) ? "｜" : (displayedDays <= 8 ? "|" : "");
+    
     let finalZenCount = 0;
-
-    // 1. セパレータの決定
-    if (displayedDays <= 6) {
-        sep = "｜"; 
-    } else if (displayedDays <= 8) {
-        sep = "|";  
-    } else {
-        sep = "";   
-    }
-
-    // 2. 自動パディングの決定
     if (isManualEnabled) {
         finalZenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
     } else {
@@ -152,9 +137,7 @@ function generateFinalText() {
     const heavyPadding = finalZenCount > 0 ? "　".repeat(finalZenCount) : "";
     let tempLines = [];
 
-    // 各行の組み立て
     tempLines.push(title);
-    
     let hNums = [];
     for(let i = rStart; i <= totalMax; i++) hNums.push(getAlignedDayNum(i));
     tempLines.push("日数" + sep + hNums.join(sep));
@@ -168,24 +151,27 @@ function generateFinalText() {
 
     if(b.id === "a") tempLines.push("⚠7日は6日の続き(半日)");
 
-    // --- 最終行以外にパディングを付与 ---
+    // --- パディング付与 & 改行コード統一処理 ---
     const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
     let lines = tempLines.map((text, index) => {
         const rowNum = index + 1;
-        // 最終行（index === length - 1）にはパディングを付与しない
+        // 最終行にはパディングを付けない
         if (rowNum >= finalStartRow && index < tempLines.length - 1) {
             return text.trim() + heavyPadding;
         }
         return text.trim();
     });
 
-    const lineBreak = isWindows() ? '\r\n' : '\n';
-    return lines.join(lineBreak);
+    // OS判定を廃止し、常に \n (LF) を使用
+    return lines.join('\n'); 
 }
 
 function updateOutput() {
     const out = document.getElementById('outputText');
-    if(out) out.innerText = generateFinalText();
+    if(out) {
+        // innerText による自動整形を避けるため textContent を使用
+        out.textContent = generateFinalText();
+    }
 }
 
 function step(id, val) {
