@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.8";
+const APP_VERSION = "6.6.9";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -155,40 +155,51 @@ function generateFinalText() {
 
     if(b.id === "a") tempLines.push("⚠7日は6日の続き(半日)");
 
-    // --- OS別・出力分岐ロジック (v6.6.8) ---
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        // Windows専用: 物理16文字アライン
-        const TARGET_WIDTH = 16;
+        const TARGET_WIDTH_HW = 32; // 半角換算32 = 全角16
+        
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
+            
             let currentText = line.trim();
-            let paddingCount = TARGET_WIDTH - currentText.length;
-            if (paddingCount < 1) paddingCount = 1;
-            return currentText + "　".repeat(paddingCount);
+            let currentWidth = 0;
+            for (let i = 0; i < currentText.length; i++) {
+                const char = currentText[i];
+                // 半角文字判定（ASCII + 半角カナ）
+                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) {
+                    currentWidth += 1;
+                } else {
+                    currentWidth += 2;
+                }
+            }
+
+            let needWidth = TARGET_WIDTH_HW - currentWidth;
+            let paddingCount = Math.max(1, Math.floor(needWidth / 2));
+            let halfSpace = (needWidth % 2 !== 0) ? " " : "";
+            
+            return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
-        const rawResult = formattedLines.join(''); // クリップボード用(改行なし)
+        const rawResult = formattedLines.join('');
 
-        // プレビューの可視化(VSコード風)
         if (out) {
-            const visualText = rawResult.replace(/　/g, '◌');
-            out.textContent = visualText;
+            // 可視化表示（半角スペースは · 、全角スペースは ◌）
+            out.textContent = rawResult.replace(/　/g, '◌').replace(/ /g, '·');
             out.style.width = "32ch"; 
             out.style.wordBreak = "break-all";
             out.style.whiteSpace = "normal";
-            out.style.color = "#88ff88"; // 可視化モード用の色
+            out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
-        // Android/他: 標準改行モード
         if (out) {
             out.style.width = "auto";
             out.style.wordBreak = "normal";
             out.style.whiteSpace = "pre-wrap";
-            out.style.color = "#00ff00"; // 通常の色
+            out.style.color = "#00ff00";
         }
 
         const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
@@ -207,7 +218,7 @@ function generateFinalText() {
 }
 
 function updateOutput() {
-    generateFinalText(); // 出力エリアの更新を兼ねる
+    generateFinalText();
 }
 
 function step(id, val) {
