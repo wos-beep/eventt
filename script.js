@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.0";
+const APP_VERSION = "6.7.1";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -138,30 +138,37 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        // --- v6.7.0 動的ターゲット幅計算 ---
-        // 項目名(4) + 最初のsep幅 + データ部分((2+sep幅)*(日数-1)+2) + バッファ(4)
-        const sW = (sep === "｜") ? 2 : (sep === "|" ? 1 : 0);
-        const TARGET_WIDTH_HW = 4 + sW + (2 + (2 + sW) * (displayedDays - 1)) + 4;
+        // --- v6.7.1 全角16文字(32pt)アライン固定 ---
+        const TARGET_WIDTH_HW = 32; 
         
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
+            
             let currentText = line.trim();
             let currentWidth = 0;
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
+                // 半角判定（ASCII + 半角カナ）
                 if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
                 else currentWidth += 2;
             }
+
             let needWidth = TARGET_WIDTH_HW - currentWidth;
-            let paddingCount = Math.max(1, Math.ceil(needWidth / 2));
+            let paddingCount = Math.floor(needWidth / 2);
             let halfSpace = (needWidth % 2 !== 0) ? " " : "";
+            
+            // 幅を超えていても最低1つの全角スペースで押し出す
+            if (paddingCount <= 0) {
+                paddingCount = 1;
+                halfSpace = "";
+            }
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
         const rawResult = formattedLines.join('');
         if (out) {
             out.textContent = rawResult.replace(/　/g, '◌').replace(/ /g, '·');
-            out.style.width = `${Math.ceil(TARGET_WIDTH_HW / 2) + 1}ch`; 
+            out.style.width = "32ch"; 
             out.style.wordBreak = "break-all";
             out.style.whiteSpace = "normal";
             out.style.color = "#88ff88";
@@ -169,7 +176,7 @@ function generateFinalText() {
         return rawResult;
 
     } else {
-        // Android/他: v6.6.6ベースの最適化
+        // Android/他: 通常の改行モード
         if (out) {
             out.style.width = "auto";
             out.style.wordBreak = "normal";
