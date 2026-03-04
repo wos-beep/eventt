@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.5";
+const APP_VERSION = "6.6.6";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -124,64 +124,60 @@ function generateFinalText() {
         }
     }
 
-    // --- 【重要】表示日数に基づく3段階動的判定 (v6.6.5) ---
-    const displayedDays = totalMax - rStart + 1; 
+    // --- 表示日数に基づく動的判定 (v6.6.6) ---
+    const displayedDays = totalMax - rStart + 1;
     let sep = ""; 
     let finalZenCount = 0;
-    let finalStartRow = 11;
 
-    // 1. セパレータの決定（表示日数に応じたスリム化）
+    // 1. セパレータの決定
     if (displayedDays <= 6) {
-        sep = "｜"; // 6日以下は全角
+        sep = "｜"; 
     } else if (displayedDays <= 8) {
-        sep = "|";  // 7-8日は半角（溢れ対策）
+        sep = "|";  
     } else {
-        sep = "";   // 9日以上はなし
+        sep = "";   
     }
 
-    // 2. パディングの判定
+    // 2. 自動パディングの決定
     if (isManualEnabled) {
-        finalStartRow = parseInt(document.getElementById('startRow')?.value || 1);
         finalZenCount = parseInt(document.getElementById('zenPadding')?.value || 0);
     } else {
-        if (displayedDays <= 6) {
-            finalZenCount = 2;
-        } else if (displayedDays >= 9 && displayedDays <= 13) {
-            finalZenCount = 14 - displayedDays; 
-        } else {
-            // 7, 8日は半角セパレータを使用するため、基本壁は0で様子見
-            finalZenCount = 0; 
-        }
+        if (displayedDays <= 6) finalZenCount = 2;
+        else if (displayedDays === 7) finalZenCount = 5; 
+        else if (displayedDays === 8) finalZenCount = 4; 
+        else if (displayedDays >= 9 && displayedDays <= 13) finalZenCount = 14 - displayedDays;
+        else finalZenCount = 0;
     }
 
     const heavyPadding = finalZenCount > 0 ? "　".repeat(finalZenCount) : "";
-    let lines = [];
-    let currentLineCount = 1;
+    let tempLines = [];
 
-    const addLine = (text) => {
-        const base = text.toString().trim();
-        if (base === "") return;
-        const pad = (currentLineCount >= finalStartRow) ? heavyPadding : "";
-        lines.push(base + pad);
-        currentLineCount++;
-    };
-
-    addLine(title);
+    // 各行の組み立て
+    tempLines.push(title);
     
     let hNums = [];
-    for(let i = rStart; i <= totalMax; i++) {
-        hNums.push(getAlignedDayNum(i));
-    }
-    addLine("日数" + sep + hNums.join(sep));
+    for(let i = rStart; i <= totalMax; i++) hNums.push(getAlignedDayNum(i));
+    tempLines.push("日数" + sep + hNums.join(sep));
     
     Object.keys(combined).forEach(k => {
         let dStr = (combined[k] || "").substring(rStart - 1, totalMax);
         if (dStr && dStr.replace(/－/g, '').trim().length > 0) {
-            addLine(k + sep + dStr.split('').join(sep));
+            tempLines.push(k + sep + dStr.split('').join(sep));
         }
     });
 
-    if(b.id === "a") addLine("※7日は6日の続き(半日)");
+    if(b.id === "a") tempLines.push("⚠7日は6日の続き(半日)");
+
+    // --- 最終行以外にパディングを付与 ---
+    const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
+    let lines = tempLines.map((text, index) => {
+        const rowNum = index + 1;
+        // 最終行（index === length - 1）にはパディングを付与しない
+        if (rowNum >= finalStartRow && index < tempLines.length - 1) {
+            return text.trim() + heavyPadding;
+        }
+        return text.trim();
+    });
 
     const lineBreak = isWindows() ? '\r\n' : '\n';
     return lines.join(lineBreak);
