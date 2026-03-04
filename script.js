@@ -1,4 +1,4 @@
-const APP_VERSION = "6.6.7";
+const APP_VERSION = "6.6.8";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -7,6 +7,10 @@ const eventChars = {
     "s": "季", 
     "o": "士"  
 };
+
+function isWindows() {
+    return navigator.platform.indexOf('Win') > -1;
+}
 
 fetch('event.json').then(res => res.json()).then(data => {
     rawData = data;
@@ -151,27 +155,59 @@ function generateFinalText() {
 
     if(b.id === "a") tempLines.push("⚠7日は6日の続き(半日)");
 
-    // --- パディング付与 & 改行コード統一処理 ---
-    const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
-    let lines = tempLines.map((text, index) => {
-        const rowNum = index + 1;
-        // 最終行にはパディングを付けない
-        if (rowNum >= finalStartRow && index < tempLines.length - 1) {
-            return text.trim() + heavyPadding;
-        }
-        return text.trim();
-    });
+    // --- OS別・出力分岐ロジック (v6.6.8) ---
+    const out = document.getElementById('outputText');
 
-    // OS判定を廃止し、常に \n (LF) を使用
-    return lines.join('\n'); 
+    if (isWindows()) {
+        // Windows専用: 物理16文字アライン
+        const TARGET_WIDTH = 16;
+        let formattedLines = tempLines.map((line, index) => {
+            if (index === tempLines.length - 1) return line.trim();
+            let currentText = line.trim();
+            let paddingCount = TARGET_WIDTH - currentText.length;
+            if (paddingCount < 1) paddingCount = 1;
+            return currentText + "　".repeat(paddingCount);
+        });
+
+        const rawResult = formattedLines.join(''); // クリップボード用(改行なし)
+
+        // プレビューの可視化(VSコード風)
+        if (out) {
+            const visualText = rawResult.replace(/　/g, '◌');
+            out.textContent = visualText;
+            out.style.width = "32ch"; 
+            out.style.wordBreak = "break-all";
+            out.style.whiteSpace = "normal";
+            out.style.color = "#88ff88"; // 可視化モード用の色
+        }
+        return rawResult;
+
+    } else {
+        // Android/他: 標準改行モード
+        if (out) {
+            out.style.width = "auto";
+            out.style.wordBreak = "normal";
+            out.style.whiteSpace = "pre-wrap";
+            out.style.color = "#00ff00"; // 通常の色
+        }
+
+        const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
+        let lines = tempLines.map((text, index) => {
+            const rowNum = index + 1;
+            if (rowNum >= finalStartRow && index < tempLines.length - 1) {
+                return text.trim() + heavyPadding;
+            }
+            return text.trim();
+        });
+
+        const resultText = lines.join('\n');
+        if (out) out.textContent = resultText;
+        return resultText;
+    }
 }
 
 function updateOutput() {
-    const out = document.getElementById('outputText');
-    if(out) {
-        // innerText による自動整形を避けるため textContent を使用
-        out.textContent = generateFinalText();
-    }
+    generateFinalText(); // 出力エリアの更新を兼ねる
 }
 
 function step(id, val) {
