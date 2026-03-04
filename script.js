@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.6";
+const APP_VERSION = "6.7.7";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -148,31 +148,29 @@ function generateFinalText() {
             
             let currentText = line.trim();
             let currentWidth = 0;
+            
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
+                // 半角(ASCII/パイプ/半角カナ)は 1pt、それ以外は 2pt
+                if (char.match(/[| -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
                 else currentWidth += 2;
             }
 
             let needWidth = TARGET_WIDTH_HW - currentWidth;
+            if (needWidth <= 0) return currentText;
+
             let paddingCount = Math.floor(needWidth / 2);
             let halfSpace = (needWidth % 2 !== 0) ? " " : "";
             
-            if (paddingCount <= 0) {
-                paddingCount = 1;
-                halfSpace = "";
-            }
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
         const rawResult = formattedLines.join('');
         if (out) {
-            // スタイル上書き: 32ch地点で物理改行させる設定
-            out.style.setProperty('font-family', 'Consolas, "MS Gothic", monospace', 'important');
+            out.style.setProperty('font-family', 'Consolas, monospace', 'important');
             out.style.setProperty('white-space', 'normal', 'important'); 
             out.style.setProperty('word-break', 'break-all', 'important'); 
             out.style.setProperty('letter-spacing', '0px', 'important');
-            out.style.setProperty('padding', '10px', 'important');
             out.style.setProperty('box-sizing', 'content-box', 'important'); 
             out.style.setProperty('overflow-x', 'hidden', 'important'); 
             
@@ -187,10 +185,7 @@ function generateFinalText() {
             out.style.removeProperty('font-family');
             out.style.removeProperty('white-space');
             out.style.removeProperty('word-break');
-            out.style.removeProperty('padding');
-            out.style.removeProperty('box-sizing');
             out.style.width = "auto";
-            out.style.wordBreak = "normal";
             out.style.color = "#00ff00";
         }
         let finalZenCount = 0;
