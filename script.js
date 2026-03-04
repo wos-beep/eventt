@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.2";
+const APP_VERSION = "6.7.3";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -17,11 +17,6 @@ function getAlignedDayNum(i) {
     return i.toString(); 
 }
 
-/**
- * バージョン表示ロジック (v6.7.2 修正)
- * HTML側に <span id="jsVersion"></span> があればそこへ、
- * なければ従来通り h3 の末尾へフォールバックします。
- */
 function displayVersion() {
     try {
         const vEl = document.getElementById('jsVersion');
@@ -146,7 +141,6 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        // --- v6.7.2 全角16文字(32pt)アライン修正 ---
         const TARGET_WIDTH_HW = 32; 
         
         let formattedLines = tempLines.map((line, index) => {
@@ -156,12 +150,9 @@ function generateFinalText() {
             let currentWidth = 0;
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                // 半角判定（ASCII + 半角カナ）: 1ptとしてカウント
-                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) {
-                    currentWidth += 1;
-                } else {
-                    currentWidth += 2;
-                }
+                // 半角: 1pt / 全角: 2pt
+                if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
+                else currentWidth += 2;
             }
 
             let needWidth = TARGET_WIDTH_HW - currentWidth;
@@ -177,24 +168,24 @@ function generateFinalText() {
 
         const rawResult = formattedLines.join('');
         if (out) {
+            // CSSを!important付きで上書きして等幅を強制
+            out.style.setProperty('font-family', 'Consolas, "Courier New", monospace', 'important');
+            out.style.setProperty('font-variant-ligatures', 'none', 'important'); // 合字禁止
             out.textContent = rawResult.replace(/　/g, '◌').replace(/ /g, '·');
             out.style.width = "32ch"; 
             out.style.wordBreak = "break-all";
             out.style.whiteSpace = "normal";
             out.style.color = "#88ff88";
-            // プレビューの等幅フォント化
-            out.style.fontFamily = "'Courier New', Courier, monospace";
         }
         return rawResult;
 
     } else {
-        // Android/他: 通常改行モード
         if (out) {
+            out.style.fontFamily = "inherit";
             out.style.width = "auto";
             out.style.wordBreak = "normal";
             out.style.whiteSpace = "pre-wrap";
             out.style.color = "#00ff00";
-            out.style.fontFamily = "inherit";
         }
         let finalZenCount = 0;
         if (isManualEnabled) {
