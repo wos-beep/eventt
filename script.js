@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.5";
+const APP_VERSION = "6.7.6";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -167,14 +167,15 @@ function generateFinalText() {
 
         const rawResult = formattedLines.join('');
         if (out) {
-            // CSSを!importantで上書き
-            out.style.setProperty('font-family', 'Consolas, "Courier New", monospace', 'important');
-            out.style.setProperty('white-space', 'nowrap', 'important'); 
+            // スタイル上書き: 32ch地点で物理改行させる設定
+            out.style.setProperty('font-family', 'Consolas, "MS Gothic", monospace', 'important');
+            out.style.setProperty('white-space', 'normal', 'important'); 
+            out.style.setProperty('word-break', 'break-all', 'important'); 
             out.style.setProperty('letter-spacing', '0px', 'important');
             out.style.setProperty('padding', '10px', 'important');
-            out.style.setProperty('overflow-x', 'auto', 'important');
+            out.style.setProperty('box-sizing', 'content-box', 'important'); 
+            out.style.setProperty('overflow-x', 'hidden', 'important'); 
             
-            // 〼 を使った可視化表示
             out.textContent = rawResult.replace(/　/g, '〼').replace(/ /g, '·');
             out.style.width = "32ch"; 
             out.style.color = "#88ff88";
@@ -185,7 +186,9 @@ function generateFinalText() {
         if (out) {
             out.style.removeProperty('font-family');
             out.style.removeProperty('white-space');
+            out.style.removeProperty('word-break');
             out.style.removeProperty('padding');
+            out.style.removeProperty('box-sizing');
             out.style.width = "auto";
             out.style.wordBreak = "normal";
             out.style.color = "#00ff00";
