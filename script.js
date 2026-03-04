@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.9";
+const APP_VERSION = "6.8.1";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -28,6 +28,12 @@ function displayVersion() {
 }
 
 function initApp() {
+    // Windows版なら手動調整パネルを非表示にする
+    const manualPanel = document.querySelector('details');
+    if (manualPanel && isWindows()) {
+        manualPanel.style.display = 'none';
+    }
+
     const ids = ['baseEvent', 'overlayEvent', 'overlayShift', 'rangeStart', 'startRow', 'zenPadding', 'usePadding'];
     ids.forEach(id => {
         const el = document.getElementById(id);
@@ -80,7 +86,6 @@ function generateFinalText() {
     let title = b.name;
 
     if (o) {
-        // 重ね合わせ時：代替文字に置換する
         totalMax = Math.max(b.days, o.days + shift);
         title = `${b.name.split('with')[0]}＋${o.name.substring(0,4)}`;
         const allKeys = new Set([...Object.keys(b.data), ...Object.keys(o.data)]);
@@ -99,7 +104,6 @@ function generateFinalText() {
             combined[k] = row;
         });
     } else { 
-        // 単一イベント時：置換せず元データ（○等）を維持
         combined = JSON.parse(JSON.stringify(b.data)); 
     }
 
@@ -124,7 +128,7 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        const TARGET_WIDTH_PT = 32; 
+        const TARGET_WIDTH_PT = 32.0; 
         
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
@@ -148,33 +152,34 @@ function generateFinalText() {
             return currentText + halfSpace + "　".repeat(paddingCount);
         });
 
-        // コピー用：従来通り連結
         const rawResult = formattedLines.join('');
         
         if (out) {
-            out.style.setProperty('font-family', 'Consolas, monospace', 'important');
-            out.style.setProperty('white-space', 'pre', 'important'); // \nを有効にする
-            out.style.setProperty('word-break', 'normal', 'important'); 
+            out.style.setProperty('font-family', '"BIZ UDGothic", "MS Gothic", monospace', 'important');
+            out.style.setProperty('white-space', 'pre', 'important');
+            out.style.setProperty('font-variant-numeric', 'tabular-nums', 'important');
             out.style.setProperty('letter-spacing', '0px', 'important');
-            out.style.setProperty('padding', '10px', 'important');
-            out.style.setProperty('overflow-x', 'auto', 'important'); 
+            out.style.setProperty('padding', '12px', 'important');
+            out.style.setProperty('display', 'inline-block', 'important');
             
-            // プレビュー表示用：1行ごとに改行を付与して「食い込み」を防ぐ
             const previewText = formattedLines.join('\n')
                                 .replace(/　/g, '〼')
                                 .replace(/ /g, '·');
             out.textContent = previewText;
-            out.style.width = "auto"; // 内容に合わせて広げる
+            out.style.width = "auto"; 
             out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
+        // Android/他: 手動レイアウト調整
         if (out) {
             out.style.removeProperty('font-family');
-            out.style.removeProperty('white-space');
-            out.style.removeProperty('word-break');
+            out.style.setProperty('white-space', 'pre', 'important');
+            out.style.removeProperty('font-variant-numeric');
+            out.style.removeProperty('letter-spacing');
             out.style.removeProperty('padding');
+            out.style.removeProperty('display');
             out.style.width = "auto";
             out.style.color = "#00ff00";
         }
@@ -189,13 +194,19 @@ function generateFinalText() {
         }
         const heavyPadding = finalZenCount > 0 ? "　".repeat(finalZenCount) : "";
         const finalStartRow = isManualEnabled ? parseInt(document.getElementById('startRow')?.value || 11) : 11;
+        
         let lines = tempLines.map((text, index) => {
             const rowNum = index + 1;
             if (rowNum >= finalStartRow && index < tempLines.length - 1) return text.trim() + heavyPadding;
             return text.trim();
         });
+
         const resultText = lines.join('\n');
-        if (out) out.textContent = resultText;
+        
+        if (out) {
+            // Androidでもプレビュー上は 〼 と · で可視化する
+            out.textContent = resultText.replace(/　/g, '〼').replace(/ /g, '·');
+        }
         return resultText;
     }
 }
