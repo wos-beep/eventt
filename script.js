@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.4";
+const APP_VERSION = "6.7.5";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -167,24 +167,25 @@ function generateFinalText() {
 
         const rawResult = formattedLines.join('');
         if (out) {
-            // HTMLのCSS設定を強力に上書き
-            out.style.setProperty('font-family', 'Consolas, monospace', 'important');
-            out.style.setProperty('white-space', 'normal', 'important'); // pre-wrapを解除
+            // CSSを!importantで上書き
+            out.style.setProperty('font-family', 'Consolas, "Courier New", monospace', 'important');
+            out.style.setProperty('white-space', 'nowrap', 'important'); 
             out.style.setProperty('letter-spacing', '0px', 'important');
-            out.style.setProperty('word-spacing', '0px', 'important');
+            out.style.setProperty('padding', '10px', 'important');
+            out.style.setProperty('overflow-x', 'auto', 'important');
             
-            out.textContent = rawResult.replace(/　/g, '◌').replace(/ /g, '·');
+            // 〼 を使った可視化表示
+            out.textContent = rawResult.replace(/　/g, '〼').replace(/ /g, '·');
             out.style.width = "32ch"; 
-            out.style.wordBreak = "break-all";
             out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
         if (out) {
-            // Android等では元のCSS設定を活かす
             out.style.removeProperty('font-family');
             out.style.removeProperty('white-space');
+            out.style.removeProperty('padding');
             out.style.width = "auto";
             out.style.wordBreak = "normal";
             out.style.color = "#00ff00";
