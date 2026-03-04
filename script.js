@@ -1,4 +1,4 @@
-const APP_VERSION = "6.7.3";
+const APP_VERSION = "6.7.4";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 const eventChars = { "a": "同", "s": "季", "o": "士" };
@@ -150,7 +150,6 @@ function generateFinalText() {
             let currentWidth = 0;
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
-                // 半角: 1pt / 全角: 2pt
                 if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1;
                 else currentWidth += 2;
             }
@@ -168,23 +167,26 @@ function generateFinalText() {
 
         const rawResult = formattedLines.join('');
         if (out) {
-            // CSSを!important付きで上書きして等幅を強制
-            out.style.setProperty('font-family', 'Consolas, "Courier New", monospace', 'important');
-            out.style.setProperty('font-variant-ligatures', 'none', 'important'); // 合字禁止
+            // HTMLのCSS設定を強力に上書き
+            out.style.setProperty('font-family', 'Consolas, monospace', 'important');
+            out.style.setProperty('white-space', 'normal', 'important'); // pre-wrapを解除
+            out.style.setProperty('letter-spacing', '0px', 'important');
+            out.style.setProperty('word-spacing', '0px', 'important');
+            
             out.textContent = rawResult.replace(/　/g, '◌').replace(/ /g, '·');
             out.style.width = "32ch"; 
             out.style.wordBreak = "break-all";
-            out.style.whiteSpace = "normal";
             out.style.color = "#88ff88";
         }
         return rawResult;
 
     } else {
         if (out) {
-            out.style.fontFamily = "inherit";
+            // Android等では元のCSS設定を活かす
+            out.style.removeProperty('font-family');
+            out.style.removeProperty('white-space');
             out.style.width = "auto";
             out.style.wordBreak = "normal";
-            out.style.whiteSpace = "pre-wrap";
             out.style.color = "#00ff00";
         }
         let finalZenCount = 0;
