@@ -1,4 +1,4 @@
-const APP_VERSION = "6.8.5";
+const APP_VERSION = "6.8.6";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -140,7 +140,7 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        const TARGET_WIDTH_PT = 32.0; 
+        const TARGET_WIDTH_PT = 33.0; 
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
             let currentText = line.trim();
