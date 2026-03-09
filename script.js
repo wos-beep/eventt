@@ -1,4 +1,4 @@
-const APP_VERSION = "6.8.6";
+const APP_VERSION = "6.8.7";
 let rawData = [];
 const fullDigits = ["０","１","２","３","４","５","６","７","８","９"];
 
@@ -27,6 +27,7 @@ function displayVersion() {
 }
 
 function initApp() {
+    // Windows版なら手動調整パネルを非表示にする
     const manualPanel = document.querySelector('details');
     if (manualPanel && isWindows()) {
         manualPanel.style.display = 'none';
@@ -37,7 +38,6 @@ function initApp() {
         const el = document.getElementById(id);
         if (!el) return;
         if (id === 'baseEvent' || id === 'overlayEvent') {
-            // 重ねる側の初期値を「なし」にする
             if(id === 'overlayEvent') {
                 el.innerHTML = '<option value="">なし</option>';
             }
@@ -65,7 +65,7 @@ function filterOverlayOptions() {
     if(!bEl || !oSel) return;
     const bValue = bEl.value;
     Array.from(oSel.options).forEach(opt => {
-        if (!opt.value) return; // 「なし」は常に表示
+        if (!opt.value) return;
         opt.style.display = (opt.value === bValue) ? 'none' : 'block';
     });
 }
@@ -140,25 +140,41 @@ function generateFinalText() {
     const out = document.getElementById('outputText');
 
     if (isWindows()) {
-        const TARGET_WIDTH_PT = 33.0; 
+        const LIMIT_PT = 32.0; 
+        
         let formattedLines = tempLines.map((line, index) => {
             if (index === tempLines.length - 1) return line.trim();
+            
             let currentText = line.trim();
             let currentWidth = 0;
+            
             for (let i = 0; i < currentText.length; i++) {
                 const char = currentText[i];
                 if (char === '|') currentWidth += 0.5;
                 else if (char.match(/[ -~]|[\uFF61-\uFF9F]/)) currentWidth += 1.0;
                 else currentWidth += 2.0;
             }
-            let needWidth = TARGET_WIDTH_PT - currentWidth;
-            if (needWidth <= 0) return currentText;
-            let paddingCount = Math.floor(needWidth / 2);
-            let halfSpace = (needWidth % 2 >= 1.0 || needWidth % 2 === 0.5) ? " " : "";
-            return currentText + halfSpace + "　".repeat(paddingCount);
+
+            let padding = "";
+            let workWidth = currentWidth;
+            
+            // 30pt付近まで全角で埋める
+            while (workWidth <= 29.5) { 
+                padding += "　";
+                workWidth += 2.0;
+            }
+            
+            // 残りを半角で調整し、LIMIT_PT(32.0)に極限まで近づける
+            while (workWidth <= 31.0) {
+                padding += " ";
+                workWidth += 1.0;
+            }
+
+            return currentText + padding;
         });
 
         const rawResult = formattedLines.join('');
+        
         if (out) {
             out.style.setProperty('font-family', '"BIZ UDGothic", "MS Gothic", monospace', 'important');
             out.style.setProperty('white-space', 'pre', 'important');
@@ -166,7 +182,10 @@ function generateFinalText() {
             out.style.setProperty('letter-spacing', '0px', 'important');
             out.style.setProperty('padding', '12px', 'important');
             out.style.setProperty('display', 'inline-block', 'important');
-            const previewText = formattedLines.join('\n').replace(/　/g, '〼').replace(/ /g, '·');
+            
+            const previewText = formattedLines.join('\n')
+                                .replace(/　/g, '〼')
+                                .replace(/ /g, '·');
             out.textContent = previewText;
             out.style.width = "auto"; 
             out.style.color = "#88ff88";
@@ -174,6 +193,7 @@ function generateFinalText() {
         return rawResult;
 
     } else {
+        // Android/他
         if (out) {
             out.style.setProperty('white-space', 'pre', 'important');
             out.style.color = "#00ff00";
